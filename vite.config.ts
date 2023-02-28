@@ -1,10 +1,11 @@
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import glsl from "vite-plugin-glsl";
 
 export default defineConfig({
   base: "./",
-  plugins: [react()],
+  plugins: [glsl(), react()],
   build: {
     sourcemap: true,
     lib: {
