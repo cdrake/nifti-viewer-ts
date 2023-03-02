@@ -1,0 +1,14 @@
+@startuml Architecture
+
+package "Resource Loader" {
+    [NVLoader] --> [NVMeshLoader]
+    [NVLoader] --> [NVVoxelLoader]
+}
+
+package "Renderer" {
+    [NVRenderer] --> [NVShader]
+    [NVRenderer] --> [NVShaderCache]
+    [NVShader] --> [Shader Files]
+}
+
+@enduml
