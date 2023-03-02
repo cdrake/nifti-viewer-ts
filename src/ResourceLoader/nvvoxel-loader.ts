@@ -267,6 +267,7 @@ export class NVVoxelLoader {
     if (!this.dimsRAS || !this.matRAS) {
       return null;
     }
+    // TODO(cdrake): create slices here ( updateGLVolume and refreshLayers and refreshColormaps)
 
     //cube has 8 vertices: left/right, posterior/anterior, inferior/superior
     //n.b. voxel coordinates are from VOXEL centers
