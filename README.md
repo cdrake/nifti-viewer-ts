@@ -1,13 +1,12 @@
 # Nifti Viewer TS
 
-A TypeScript Nifti viewer for voxel and mesh based images.
+A TypeScript Nifti viewer for voxel and mesh based images. This is a port of the [NiiVue viewer](https://github.com/niivue/niivue) created by [Chris Rorden](https://github.com/neurolabusc) and [Taylor Hanayik](https://github.com/hanayik).
 
 ## Architecture
 ![Class Diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/cdrake/nifti-viewer-ts/main/uml/architecture.puml)
 
 ## References and Resources
-
-This project uses the boilerplate code from [Jason Sturges Vite TypeScript NPM package repo](https://github.com/jasonsturges/vite-typescript-npm-package). The architecture is modeled after the [KhronosGroup glTF sample viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer). This is a port of the [NiiVue viewer](https://github.com/niivue/niivue) created by [Chris Rorden](https://github.com/neurolabusc) and [Taylor Hanayik](https://github.com/hanayik).
+This project uses the boilerplate code from [Jason Sturges Vite TypeScript NPM package repo](https://github.com/jasonsturges/vite-typescript-npm-package). The architecture is modeled after the [KhronosGroup glTF sample viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer). 
 
 ## Getting started
 
