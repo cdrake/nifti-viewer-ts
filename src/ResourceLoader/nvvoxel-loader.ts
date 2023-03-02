@@ -78,10 +78,11 @@ export class NVVoxelLoaderOptions {
   calMaxNeg: number;
   colorbarVisible: boolean;
   ignoreZeroVoxels: boolean;
+  dataBuffer: Uint8Array | Uint16Array | Uint16Array | BigUint64Array | Float32Array | undefined;
   dataType: DATA_BUFFER_TYPE;
   imageType: NVIMAGE_TYPE;
 
-  constructor(url = "", urlImgData = "", name = "", colorMap = "gray", opacity = 1.0, calMin = NaN, calMax = NaN, calMinMaxTrusted = true, percentileFrac = 0.02, visible = true, useQFormNotSForm = false, alphaThresholdUsed = false, colorMapNegative = "", calMinNeg = NaN, calMaxNeg = NaN, colorbarVisible = true, ignoreZeroVoxels = false, dataType = DATA_BUFFER_TYPE.DT_UNKNOWN, imageType = NVIMAGE_TYPE.UNKNOWN) {
+  constructor(url = "", urlImgData = "", name = "", colorMap = "gray", opacity = 1.0, calMin = NaN, calMax = NaN, calMinMaxTrusted = true, percentileFrac = 0.02, visible = true, useQFormNotSForm = false, alphaThresholdUsed = false, colorMapNegative = "", calMinNeg = NaN, calMaxNeg = NaN, colorbarVisible = true, ignoreZeroVoxels = false, dataBuffer = undefined, dataType = DATA_BUFFER_TYPE.DT_UNKNOWN, imageType = NVIMAGE_TYPE.UNKNOWN) {
     this.url = url;
     this.urlImgData = urlImgData;
     this.name = name;
@@ -99,6 +100,7 @@ export class NVVoxelLoaderOptions {
     this.calMaxNeg = calMaxNeg;
     this.colorbarVisible = colorbarVisible;
     this.ignoreZeroVoxels = ignoreZeroVoxels;
+    this.dataBuffer = dataBuffer;
     this.dataType = dataType;
     this.imageType = imageType;
   }
