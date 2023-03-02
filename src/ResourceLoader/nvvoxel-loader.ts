@@ -6,7 +6,7 @@ import nifti from "nifti-reader-js";
 import { NV3dNode } from "../nv3d-node";
 
 // Convert enum to string https://stackoverflow.com/questions/17380845/how-do-i-convert-a-string-to-enum-in-typescript
-enum NVIMAGE_TYPE {
+export enum NVIMAGE_TYPE {
   UNKNOWN = 0,
   NII = 1,
   DCM = 2,
@@ -27,7 +27,7 @@ enum NVIMAGE_TYPE {
 }
 
 // https://nifti.nimh.nih.gov/pub/dist/src/niftilib/nifti1.h
-enum DATA_BUFFER_TYPE {
+export enum DATA_BUFFER_TYPE {
   // the original ANALYZE 7.5 type codes
   DT_NONE = 0,
   DT_UNKNOWN = 0,
@@ -60,13 +60,185 @@ enum DATA_BUFFER_TYPE {
   DT_RGBA32 = 2304,
 }
 
+export class NVVoxelLoaderOptions {
+  url: string;
+  urlImgData: string;
+  name: string;
+  colorMap: string;
+  opacity: number;
+  calMin: number;
+  calMax: number;
+  calMinMaxTrusted: boolean;
+  percentileFrac: number;
+  visible: boolean;
+  useQFormNotSForm: boolean;
+  alphaThresholdUsed: boolean;
+  colorMapNegative: string;
+  calMinNeg: number;
+  calMaxNeg: number;
+  colorbarVisible: boolean;
+  ignoreZeroVoxels: boolean;
+  dataType: DATA_BUFFER_TYPE;
+  imageType: NVIMAGE_TYPE;
+
+  constructor(url = "", urlImgData = "", name = "", colorMap = "gray", opacity = 1.0, calMin = NaN, calMax = NaN, calMinMaxTrusted = true, percentileFrac = 0.02, visible = true, useQFormNotSForm = false, alphaThresholdUsed = false, colorMapNegative = "", calMinNeg = NaN, calMaxNeg = NaN, colorbarVisible = true, ignoreZeroVoxels = false, dataType = DATA_BUFFER_TYPE.DT_UNKNOWN, imageType = NVIMAGE_TYPE.UNKNOWN) {
+    this.url = url;
+    this.urlImgData = urlImgData;
+    this.name = name;
+    this.colorMap = colorMap;
+    this.opacity = opacity;
+    this.calMin = calMin;
+    this.calMax = calMax;
+    this.calMinMaxTrusted = calMinMaxTrusted;
+    this.percentileFrac = percentileFrac;
+    this.visible = visible;
+    this.useQFormNotSForm = useQFormNotSForm;
+    this.alphaThresholdUsed = alphaThresholdUsed;
+    this.colorMapNegative = colorMapNegative;
+    this.calMinNeg = calMinNeg;
+    this.calMaxNeg = calMaxNeg;
+    this.colorbarVisible = colorbarVisible;
+    this.ignoreZeroVoxels = ignoreZeroVoxels;
+    this.dataType = dataType;
+    this.imageType = imageType;
+  }
+}
+
+/**
+ * Callback for colormap change
+ */
+type ColorMapChangeCallback = (c: string) => void;
+
+/**
+ * Callback for opacity change
+ */
+type OpacityChangeCallback = (o: number) => void;
+
+
+/**
+ * Class to load voxel images
+ */
 export class NVVoxelLoader {
   hdr: nifti.NIFTI1 | nifti.NIFTI2 | null = null;
   dimsRAS: number[] | null = null;
   matRAS: mat4 | null = null;
+  options: NVVoxelLoaderOptions;
+  id: string;
+  frame4D: number;
+  imgRaw: Uint8Array | Uint16Array | Uint16Array | BigUint64Array | Float32Array;
+  onColorMapChange: ColorMapChangeCallback | undefined;
+  onOpacityChange: OpacityChangeCallback | undefined;
 
-  imageType = NVIMAGE_TYPE.UNKNOWN;
-  dataBufferType = DATA_BUFFER_TYPE.DT_NONE;
+  constructor(options = new NVVoxelLoaderOptions()) {
+    // copy the options
+    this.options = { ...options };
+
+    // multiple objects could be defined from the same options. id is used to differentiate
+    this.id = uuidv4();
+
+    // initialize default data members for rendering
+    this.frame4D = 0;
+    this.imgRaw = new Uint8Array();
+  }
+
+  get name() {
+    return this.options.name;
+  }
+  set name(value: string) {
+    this.options.name = value;
+  }
+
+  get colorMap() {
+    return this.options.colorMap;
+  }
+  set colorMap(value) {
+    this.options.colorMap = value;
+    if (this.onColorMapChange) {
+      this.onColorMapChange(value);
+    }
+  }
+
+  get opactiy() {
+    return this.options.opacity;
+  }
+  set opacity(value) {
+    this.options.opacity = value;
+    if (this.onOpacityChange) {
+      this.onOpacityChange(value);
+    }
+  }
+
+  get percentileFrac() {
+    return this.options.percentileFrac;
+  }
+  set percentileFrac(value) {
+    this.options.percentileFrac = value;
+  }
+
+  get ignoreZeroVoxels() {
+    return this.options.ignoreZeroVoxels;
+  }
+  set ignoreZeroVoxels(value) {
+    this.options.ignoreZeroVoxels = value;
+  }
+
+  get visible() {
+    return this.options.visible;
+  }
+  set visible(value) {
+    this.options.visible = value;
+  }
+
+  get useQFormNotSForm() {
+    return this.options.useQFormNotSForm;
+  }
+  set useQFormNotSForm(value) {
+    this.options.useQFormNotSForm = value;
+  }
+
+  get alphaThresholdUsed() {
+    return this.options.alphaThresholdUsed;
+  }
+  set alphaThresholdUsed(value) {
+    this.options.alphaThresholdUsed = value;
+  }
+
+  get colorMapNegative() {
+    return this.options.colorMapNegative;
+  }
+  set colorMapNegative(value) {
+    this.options.colorMapNegative = value;
+  }
+
+  get calMinNeg() {
+    return this.options.calMinNeg;
+  }
+  set calMinNeg(value) {
+    this.options.calMinNeg = value;
+  }
+
+  get colorbarVisible() {
+    return this.options.colorbarVisible;
+  }
+  set colorbarVisible(value) {
+    this.options.colorbarVisible = value;
+  }
+
+  get dataType() {
+    return this.options.dataType;
+  }
+  set dataType(value) {
+    this.options.dataType = value;
+  }
+
+  get imageType() {
+    return this.options.imageType;
+  }
+  set imageType(value) {
+    this.options.imageType = value;
+  }
+
+
 
   /**
    * Converts voxel space into millimetric space
@@ -81,6 +253,12 @@ export class NVVoxelLoader {
     vec4.transformMat4(pos, pos, sform);
     const pos3 = vec3.fromValues(pos[0], pos[1], pos[2]);
     return pos3;
+  }
+
+
+
+  static loadFromUrl(url: string, options = new NVVoxelLoaderOptions()) {
+
   }
 
   public to3dNode(gl: WebGL2RenderingContext): NV3dNode | null {

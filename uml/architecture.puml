@@ -1,18 +1,17 @@
 @startuml Architecture
 
 package "Resource Loader" {
+    collections "image file loaders" as FileLoaders
     [NVLoader] --> [NVMeshLoader]
     [NVLoader] --> [NVVoxelLoader]
+    [NVVoxelLoader] --> FileLoaders
 }
-
 
 package "Renderer" {
+    collections ".frag, .vert, or .gsl" as ShaderFiles
     [NVRenderer] --> [NVShader]
     [NVRenderer] --> [NVShaderCache]
+    [NVShader] --> ShaderFiles
 }
-
-collections ".frag, .vert, or .gsl" as ShaderFiles
-
-[NVShader] --> ShaderFiles
 
 @enduml
