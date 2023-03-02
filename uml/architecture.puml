@@ -5,10 +5,14 @@ package "Resource Loader" {
     [NVLoader] --> [NVVoxelLoader]
 }
 
+
 package "Renderer" {
     [NVRenderer] --> [NVShader]
     [NVRenderer] --> [NVShaderCache]
-    [NVShader] --> [Shader Files]
 }
+
+collections ".frag, .vert, or .gsl" as ShaderFiles
+
+[NVShader] --> ShaderFiles
 
 @enduml
