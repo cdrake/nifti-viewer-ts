@@ -62,7 +62,7 @@ export enum DATA_BUFFER_TYPE {
 /**
  * Options that can be supplied to constructor of {@link NVVoxelLoaderOptions}
  */
-interface NVVoxelConfigOptions {
+interface NVVoxelLoaderBaseOptions {
   name?: string;
   colorMap?: string;
   opacity?: number;
@@ -81,32 +81,11 @@ interface NVVoxelConfigOptions {
   dataType?: DATA_BUFFER_TYPE;
   imageType?: NVIMAGE_TYPE;
 }
-
-interface NVVoxelBaseConfigData {
-  name: string;
-  colorMap: string;
-  opacity: number;
-  calMin: number;
-  calMax: number;
-  calMinMaxTrusted: boolean;
-  percentileFrac: number;
-  visible: boolean;
-  useQFormNotSForm: boolean;
-  alphaThresholdUsed: boolean;
-  colorMapNegative: string;
-  calMinNeg: number;
-  calMaxNeg: number;
-  colorbarVisible: boolean;
-  ignoreZeroVoxels: boolean;
-  dataType: DATA_BUFFER_TYPE;
-  imageType: NVIMAGE_TYPE;
-}
-
-interface NVVoxelFromUrlConfig extends NVVoxelConfigOptions {
+interface NVVoxelLoaderUrlOptions extends NVVoxelLoaderBaseOptions {
   url: string;
 }
 
-interface NVVoxelFromDataBufferConfig extends NVVoxelConfigOptions {
+interface NVVoxelLoaderDataBufferOptions extends NVVoxelLoaderBaseOptions {
   dataBuffer:
     | Uint8Array
     | Uint16Array
@@ -114,7 +93,7 @@ interface NVVoxelFromDataBufferConfig extends NVVoxelConfigOptions {
     | BigUint64Array
     | Float32Array;
 }
-interface NVVoxelFromPairedDataConfig extends NVVoxelConfigOptions {
+interface NVVoxelLoaderPairedDataOptions extends NVVoxelLoaderBaseOptions {
   pairedData: string;
   dataBuffer:
     | Uint8Array
@@ -124,12 +103,10 @@ interface NVVoxelFromPairedDataConfig extends NVVoxelConfigOptions {
     | Float32Array;
 }
 
-type NVVoxelPartialConfigData =
-  | NVVoxelFromUrlConfig
-  | NVVoxelFromDataBufferConfig
-  | NVVoxelFromPairedDataConfig;
-
-type NVVoxelConfigData = NVVoxelPartialConfigData & NVVoxelBaseConfigData;
+type NVVoxelLoaderPartialOptions =
+  | NVVoxelLoaderUrlOptions
+  | NVVoxelLoaderDataBufferOptions
+  | NVVoxelLoaderPairedDataOptions;
 
 /**
  * Super set of all loader configuration options. This will initialize default values for all of the base options.
@@ -153,11 +130,17 @@ export class NVVoxelLoaderOptions {
   colorbarVisible = true;
   ignoreZeroVoxels = false;
   pairedData = "";
-  dataBuffer = undefined;
+  dataBuffer:
+    | Uint8Array
+    | Uint16Array
+    | Uint16Array
+    | BigUint64Array
+    | Float32Array
+    | undefined = undefined;
   dataType = DATA_BUFFER_TYPE.DT_UNKNOWN;
   imageType = NVIMAGE_TYPE.UNKNOWN;
 
-  constructor(options: NVVoxelPartialConfigData) {
+  constructor(options: NVVoxelLoaderPartialOptions) {
     Object.assign(this, options);
   }
 }
@@ -179,7 +162,7 @@ export class NVVoxelLoader {
   hdr: nifti.NIFTI1 | nifti.NIFTI2 | null = null;
   dimsRAS: number[] | null = null;
   matRAS: mat4 | null = null;
-  options: NVVoxelConfigData;
+  options: NVVoxelLoaderOptions;
   id: string;
   frame4D: number;
   imgRaw:
@@ -191,7 +174,7 @@ export class NVVoxelLoader {
   onColorMapChange: ColorMapChangeCallback | undefined;
   onOpacityChange: OpacityChangeCallback | undefined;
 
-  constructor(options: NVVoxelConfigData) {
+  constructor(options: NVVoxelLoaderOptions) {
     // copy the options
     this.options = { ...options };
 
