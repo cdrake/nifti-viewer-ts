@@ -28,4 +28,4 @@ lerna-debug.log*
 *.sw?
 
 # coverage reports
-coverage
+coverage/
