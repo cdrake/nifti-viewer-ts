@@ -3,61 +3,8 @@ import { mat3, mat4, vec3, vec4 } from "gl-matrix";
 import nifti from "nifti-reader-js";
 
 import { NV3dNode } from "../nv3d-node";
-
-// Convert enum to string https://stackoverflow.com/questions/17380845/how-do-i-convert-a-string-to-enum-in-typescript
-export enum NVIMAGE_TYPE {
-  UNKNOWN = 0,
-  NII = 1,
-  DCM = 2,
-  DCM_MANIFEST = 3,
-  MIH = 4,
-  MIF = 5,
-  NHDR = 6,
-  NRRD = 7,
-  MHD = 8,
-  MHA = 9,
-  MGH = 10,
-  MGZ = 11,
-  V = 12,
-  V16 = 13,
-  VMR = 14,
-  HEAD = 15,
-  DCM_FOLDER = 16,
-}
-
-// https://nifti.nimh.nih.gov/pub/dist/src/niftilib/nifti1.h
-export enum DATA_BUFFER_TYPE {
-  // the original ANALYZE 7.5 type codes
-  DT_NONE = 0,
-  DT_UNKNOWN = 0,
-  DT_BINARY = 1,
-  DT_UNSIGNED_CHAR = 2,
-  DT_SIGNED_SHORT = 4,
-  DT_SIGNED_INT = 8,
-  DT_FLOAT = 16,
-  DT_COMPLEX = 32,
-  DT_DOUBLE = 64,
-  DT_RGB = 128,
-  DT_ALL = 255,
-  // another set of names for the same
-  DT_UINT8 = 2,
-  DT_INT16 = 4,
-  DT_INT32 = 8,
-  DT_FLOAT32 = 16,
-  DT_COMPLEX64 = 32,
-  DT_FLOAT64 = 64,
-  DT_RGB24 = 128,
-  // new codes for NIFTI
-  DT_INT8 = 256,
-  DT_UINT16 = 512,
-  DT_UINT32 = 768,
-  DT_INT64 = 1024,
-  DT_UINT64 = 1280,
-  DT_FLOAT128 = 1536,
-  DT_COMPLEX128 = 1792,
-  DT_COMPLEX256 = 2048,
-  DT_RGBA32 = 2304,
-}
+import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifit-image-data";
+import { NVVoxelDataNode } from "Data/nvoxel-node";
 
 /**
  * Options that can be supplied to constructor of {@link NVVoxelLoaderOptions}
@@ -186,6 +133,47 @@ export class NVVoxelLoader {
     this.imgRaw = new Uint8Array();
   }
 
+  async load(): Promise<NVVoxelDataNode> {
+    if (this.options.url.length > 0) {
+      const response = await fetch(this.options.url);
+      const dataBuffer = await response.arrayBuffer();
+      switch (this.options.imageType) {
+        case NVIMAGE_TYPE.NII:
+          this.hdr = nifti.readHeader(dataBuffer);
+          if (this.hdr.cal_min === 0 && this.hdr.cal_max === 255) {
+            this.hdr.cal_max = 0.0;
+          }
+          this.imgRaw = nifti.readImage(this.hdr, dataBuffer);
+          break;
+        default:
+          throw new Error("Image type not supported");
+      }
+    }
+
+    const data = {
+      id: this.id,
+      name: this.name,
+      colorMap: this.colorMap,
+      opacity: this.opacity,
+      calMin: this.calMin,
+      calMax: this.calMax,
+      calMinMaxTrusted: this.calMinMaxTrusted,
+      percentileFrac: this.percentileFrac,
+      visible: this.visible,
+      useQFormNotSForm: this.useQFormNotSForm,
+      alphaThresholdUsed: this.alphaThresholdUsed,
+      colorMapNegative: this.colorMapNegative,
+      calMinNeg: this.calMinNeg,
+      calMaxNeg: this.calMaxNeg,
+      colorbarVisible: this.colorbarVisible,
+      ignoreZeroVoxels: this.ignoreZeroVoxels,
+      dataType: this.dataType,
+      dataBuffer: this.imgRaw,
+      imageType: this.imageType,
+    };
+    return data;
+  }
+
   get name() {
     return this.options.name;
   }
@@ -255,11 +243,39 @@ export class NVVoxelLoader {
     this.options.colorMapNegative = value;
   }
 
+  get calMin() {
+    return this.options.calMin;
+  }
+  set calMin(value) {
+    this.options.calMin = value;
+  }
+
+  get calMax() {
+    return this.options.calMax;
+  }
+  set calMax(value) {
+    this.options.calMax = value;
+  }
+
   get calMinNeg() {
     return this.options.calMinNeg;
   }
   set calMinNeg(value) {
     this.options.calMinNeg = value;
+  }
+
+  get calMinMaxTrusted() {
+    return this.options.calMinMaxTrusted;
+  }
+  set calMinMaxTrusted(value) {
+    this.options.calMinMaxTrusted = value;
+  }
+
+  get calMaxNeg() {
+    return this.options.calMaxNeg;
+  }
+  set calMaxNeg(value) {
+    this.options.calMaxNeg = value;
   }
 
   get colorbarVisible() {
@@ -299,6 +315,29 @@ export class NVVoxelLoader {
   }
 
   // static loadFromUrl(url: string, options = new NVVoxelLoaderOptions()) {}
+  public toVoxelDataNode(): NVVoxelDataNode {
+    return {
+      id: this.id,
+      name: this.name,
+      colorMap: this.colorMap,
+      opacity: this.opacity,
+      calMin: this.calMin,
+      calMax: this.calMax,
+      calMinMaxTrusted: this.calMinMaxTrusted,
+      percentileFrac: this.percentileFrac,
+      visible: this.visible,
+      useQFormNotSForm: this.useQFormNotSForm,
+      alphaThresholdUsed: this.alphaThresholdUsed,
+      colorMapNegative: this.colorMapNegative,
+      calMinNeg: this.calMinNeg,
+      calMaxNeg: this.calMaxNeg,
+      colorbarVisible: this.colorbarVisible,
+      ignoreZeroVoxels: this.ignoreZeroVoxels,
+      dataType: this.dataType,
+      dataBuffer: this.imgRaw,
+      imageType: this.imageType,
+    };
+  }
 
   public to3dNode(gl: WebGL2RenderingContext): NV3dNode | null {
     if (!this.dimsRAS || !this.matRAS) {
