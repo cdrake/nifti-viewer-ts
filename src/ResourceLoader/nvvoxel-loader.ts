@@ -1,4 +1,3 @@
-// import daikon from "daikon";
 import { v4 as uuidv4 } from "uuid";
 import { mat3, mat4, vec3, vec4 } from "gl-matrix";
 import nifti from "nifti-reader-js";
@@ -60,9 +59,30 @@ export enum DATA_BUFFER_TYPE {
   DT_RGBA32 = 2304,
 }
 
-export class NVVoxelLoaderOptions {
-  url: string;
-  urlImgData: string;
+/**
+ * Options that can be supplied to constructor of {@link NVVoxelLoaderOptions}
+ */
+interface NVVoxelConfigOptions {
+  name?: string;
+  colorMap?: string;
+  opacity?: number;
+  calMin?: number;
+  calMax?: number;
+  calMinMaxTrusted?: boolean;
+  percentileFrac?: number;
+  visible?: boolean;
+  useQFormNotSForm?: boolean;
+  alphaThresholdUsed?: boolean;
+  colorMapNegative?: string;
+  calMinNeg?: number;
+  calMaxNeg?: number;
+  colorbarVisible?: boolean;
+  ignoreZeroVoxels?: boolean;
+  dataType?: DATA_BUFFER_TYPE;
+  imageType?: NVIMAGE_TYPE;
+}
+
+interface NVVoxelBaseConfigData {
   name: string;
   colorMap: string;
   opacity: number;
@@ -78,31 +98,67 @@ export class NVVoxelLoaderOptions {
   calMaxNeg: number;
   colorbarVisible: boolean;
   ignoreZeroVoxels: boolean;
-  dataBuffer: Uint8Array | Uint16Array | Uint16Array | BigUint64Array | Float32Array | undefined;
   dataType: DATA_BUFFER_TYPE;
   imageType: NVIMAGE_TYPE;
+}
 
-  constructor(url = "", urlImgData = "", name = "", colorMap = "gray", opacity = 1.0, calMin = NaN, calMax = NaN, calMinMaxTrusted = true, percentileFrac = 0.02, visible = true, useQFormNotSForm = false, alphaThresholdUsed = false, colorMapNegative = "", calMinNeg = NaN, calMaxNeg = NaN, colorbarVisible = true, ignoreZeroVoxels = false, dataBuffer = undefined, dataType = DATA_BUFFER_TYPE.DT_UNKNOWN, imageType = NVIMAGE_TYPE.UNKNOWN) {
-    this.url = url;
-    this.urlImgData = urlImgData;
-    this.name = name;
-    this.colorMap = colorMap;
-    this.opacity = opacity;
-    this.calMin = calMin;
-    this.calMax = calMax;
-    this.calMinMaxTrusted = calMinMaxTrusted;
-    this.percentileFrac = percentileFrac;
-    this.visible = visible;
-    this.useQFormNotSForm = useQFormNotSForm;
-    this.alphaThresholdUsed = alphaThresholdUsed;
-    this.colorMapNegative = colorMapNegative;
-    this.calMinNeg = calMinNeg;
-    this.calMaxNeg = calMaxNeg;
-    this.colorbarVisible = colorbarVisible;
-    this.ignoreZeroVoxels = ignoreZeroVoxels;
-    this.dataBuffer = dataBuffer;
-    this.dataType = dataType;
-    this.imageType = imageType;
+interface NVVoxelFromUrlConfig extends NVVoxelConfigOptions {
+  url: string;
+}
+
+interface NVVoxelFromDataBufferConfig extends NVVoxelConfigOptions {
+  dataBuffer:
+    | Uint8Array
+    | Uint16Array
+    | Uint16Array
+    | BigUint64Array
+    | Float32Array;
+}
+interface NVVoxelFromPairedDataConfig extends NVVoxelConfigOptions {
+  pairedData: string;
+  dataBuffer:
+    | Uint8Array
+    | Uint16Array
+    | Uint16Array
+    | BigUint64Array
+    | Float32Array;
+}
+
+type NVVoxelPartialConfigData =
+  | NVVoxelFromUrlConfig
+  | NVVoxelFromDataBufferConfig
+  | NVVoxelFromPairedDataConfig;
+
+type NVVoxelConfigData = NVVoxelPartialConfigData & NVVoxelBaseConfigData;
+
+/**
+ * Super set of all loader configuration options. This will initialize default values for all of the base options.
+ */
+export class NVVoxelLoaderOptions {
+  url = "";
+  urlImgData = "";
+  name = "";
+  colorMap = "gray";
+  opacity = 1.0;
+  calMin = NaN;
+  calMax = NaN;
+  calMinMaxTrusted = true;
+  percentileFrac = 0.02;
+  visible = true;
+  useQFormNotSForm = false;
+  alphaThresholdUsed = false;
+  colorMapNegative = "";
+  calMinNeg = NaN;
+  calMaxNeg = NaN;
+  colorbarVisible = true;
+  ignoreZeroVoxels = false;
+  pairedData = "";
+  dataBuffer = undefined;
+  dataType = DATA_BUFFER_TYPE.DT_UNKNOWN;
+  imageType = NVIMAGE_TYPE.UNKNOWN;
+
+  constructor(options: NVVoxelPartialConfigData) {
+    Object.assign(this, options);
   }
 }
 
@@ -116,7 +172,6 @@ type ColorMapChangeCallback = (c: string) => void;
  */
 type OpacityChangeCallback = (o: number) => void;
 
-
 /**
  * Class to load voxel images
  */
@@ -124,14 +179,19 @@ export class NVVoxelLoader {
   hdr: nifti.NIFTI1 | nifti.NIFTI2 | null = null;
   dimsRAS: number[] | null = null;
   matRAS: mat4 | null = null;
-  options: NVVoxelLoaderOptions;
+  options: NVVoxelConfigData;
   id: string;
   frame4D: number;
-  imgRaw: Uint8Array | Uint16Array | Uint16Array | BigUint64Array | Float32Array;
+  imgRaw:
+    | Uint8Array
+    | Uint16Array
+    | Uint16Array
+    | BigUint64Array
+    | Float32Array;
   onColorMapChange: ColorMapChangeCallback | undefined;
   onOpacityChange: OpacityChangeCallback | undefined;
 
-  constructor(options = new NVVoxelLoaderOptions()) {
+  constructor(options: NVVoxelConfigData) {
     // copy the options
     this.options = { ...options };
 
@@ -163,7 +223,7 @@ export class NVVoxelLoader {
   get opactiy() {
     return this.options.opacity;
   }
-  set opacity(value) {
+  set opacity(value: number) {
     this.options.opacity = value;
     if (this.onOpacityChange) {
       this.onOpacityChange(value);
@@ -240,8 +300,6 @@ export class NVVoxelLoader {
     this.options.imageType = value;
   }
 
-
-
   /**
    * Converts voxel space into millimetric space
    * @param {number[]} xyz - Voxel position (row, colum, slice)
@@ -257,11 +315,7 @@ export class NVVoxelLoader {
     return pos3;
   }
 
-
-
-  static loadFromUrl(url: string, options = new NVVoxelLoaderOptions()) {
-
-  }
+  // static loadFromUrl(url: string, options = new NVVoxelLoaderOptions()) {}
 
   public to3dNode(gl: WebGL2RenderingContext): NV3dNode | null {
     if (!this.dimsRAS || !this.matRAS) {
