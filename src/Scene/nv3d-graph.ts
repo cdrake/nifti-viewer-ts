@@ -1,4 +1,4 @@
-import { NV3dNode } from "nv3d-node";
+import { NV3dNode } from "./nv3d-node";
 
 /**
  * Collection of 3d nodes

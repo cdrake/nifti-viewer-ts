@@ -1,10 +1,11 @@
 import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifit-image-data";
+import * as nifti from "nifti-reader-js";
 
-export type NVVoxelDataNode = {
-  id: string;
+export type NVVoxelDataItem = {
   name: string;
   colorMap: string;
   opacity: number;
+  frame4D: number;
   calMin: number;
   calMax: number;
   calMinMaxTrusted: boolean;
@@ -17,6 +18,7 @@ export type NVVoxelDataNode = {
   calMaxNeg: number;
   colorbarVisible: boolean;
   ignoreZeroVoxels: boolean;
+  hdr: nifti.NIFTI1 | nifti.NIFTI2;
   dataType: DATA_BUFFER_TYPE;
   dataBuffer:
     | Uint8Array
