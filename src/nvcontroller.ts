@@ -28,9 +28,18 @@ export class NVController {
     const L = -0.5;
     const P = -0.5;
     const I = -0.5;
+
+    if (!dataNode.dimsRAS) {
+      throw new Error("dimRAS not defined");
+    }
+
     const R = dataNode.dimsRAS[1] - 1 + 0.5;
     const A = dataNode.dimsRAS[2] - 1 + 0.5;
     const S = dataNode.dimsRAS[3] - 1 + 0.5;
+
+    if (!dataNode.matRAS) {
+      throw new Error("matRAS not defined");
+    }
 
     const LPI = this.vox2mm([L, P, I], dataNode.matRAS);
     const LAI = this.vox2mm([L, A, I], dataNode.matRAS);

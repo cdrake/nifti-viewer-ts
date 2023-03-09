@@ -54,7 +54,7 @@ export class NVVoxelDataNode {
   extentsMinOrtho?: number[];
   extentsMaxOrtho?: number[];
   mm2ortho?: mat4;
-  oblique_angle: any;
+  oblique_angle?: number;
   mm000?: vec3;
   mm100?: vec3;
   mm010?: vec3;

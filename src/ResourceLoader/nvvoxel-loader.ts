@@ -2,6 +2,7 @@ import nifti from "nifti-reader-js";
 
 import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifit-image-data";
 import { NVVoxelDataItem } from "Data/nvvoxel-data-item";
+import { mat4 } from "gl-matrix";
 
 /**
  * Options that can be supplied to constructor of {@link NVVoxelLoaderOptions}
