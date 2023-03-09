@@ -1,8 +1,6 @@
-import React from "react";
 import logo from "./logo.svg";
 import "./App.css";
-import Description from "./Description";
-import Header from "./Header";
+import NiftiViewer from "./NiftiViewer";
 
 function App() {
   return (
@@ -21,7 +19,8 @@ function App() {
           Learn React
         </a>
       </header>
-      <Description countBy={1} />
+      <div id="viewer-host"></div>
+      <NiftiViewer hostId="viewer-host" />
     </div>
   );
 }
