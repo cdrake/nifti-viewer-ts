@@ -101,7 +101,7 @@ export class NVVoxelLoader {
   static async load(options: NVVoxelLoaderOptions): Promise<NVVoxelDataItem> {
     // copy the options
     const loaderOptions = { ...options };
-    let hdr: nifti.NIFTI1;
+    let hdr: nifti.NIFTI1 | nifti.NIFTI2 | undefined = undefined;
     let imgRaw:
       | Uint8Array
       | Uint16Array
@@ -127,7 +127,11 @@ export class NVVoxelLoader {
     }
 
     if (!imgRaw) {
-      throw new Error("Image not loader");
+      throw new Error("Image not loaded");
+    }
+
+    if (!hdr) {
+      hdr = new nifti.NIFTI1();
     }
 
     const data = {

@@ -11,6 +11,46 @@ export type NVPropertyChangeCallback = (
   propertyName: string
 ) => void;
 
+/**
+ * Checks for NaN entries in 4x4 matrix
+ * @param mtx mat4
+ * @returns {boolean}
+ */
+function isAffineOK(mtx: mat4) {
+  //A good matrix should not have any components that are not a number
+  //A good spatial transformation matrix should not have a row or column that is all zeros
+  const iOK = [false, false, false, false];
+  const jOK = [false, false, false, false];
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      if (isNaN(mtx[i][j])) return false;
+    }
+  }
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      if (mtx[i][j] === 0.0) continue;
+      iOK[i] = true;
+      jOK[j] = true;
+    }
+  }
+  for (let i = 0; i < 3; i++) {
+    if (!iOK[i]) return false;
+    if (!jOK[i]) return false;
+  }
+  return true;
+} //
+
+/**
+ * Determines if platform is little endian
+ * @returns {boolean}
+ */
+function isPlatformLittleEndian() {
+  //inspired by https://github.com/rii-mango/Papaya
+  const buffer = new ArrayBuffer(2);
+  new DataView(buffer).setInt16(0, 256, true);
+  return new Int16Array(buffer)[0] === 256;
+}
+
 export class NVVoxelDataNode {
   id: string;
   _name: string;
@@ -33,10 +73,14 @@ export class NVVoxelDataNode {
     | Uint8Array
     | Uint16Array
     | Uint16Array
+    | Int16Array
     | BigUint64Array
-    | Float32Array;
+    | Float32Array
+    | Float64Array;
   _imageType: NVIMAGE_TYPE;
   _frame4D: number;
+  _frame4DCount: number;
+  _vox3DCount: number;
   _hdr: nifti.NIFTI1 | nifti.NIFTI2;
   dimsRAS?: number[];
   matRAS?: mat4;
@@ -59,6 +103,10 @@ export class NVVoxelDataNode {
   mm100?: vec3;
   mm010?: vec3;
   mm001?: vec3;
+  private _robustMin: number;
+  private _robustMax: number;
+  private _globalMin: number;
+  private _globalMax: number;
 
   constructor(data: NVVoxelDataItem) {
     // multiple objects could be defined from the same options. id is used to differentiate
@@ -77,6 +125,7 @@ export class NVVoxelDataNode {
     this._dataBuffer = Object.assign([], data.dataBuffer);
     this._dataType = data.dataType;
     this._frame4D = data.frame4D;
+    this._frame4DCount = 1;
     this._hdr = data.hdr;
     this._ignoreZeroVoxels = data.ignoreZeroVoxels;
     this._imageType = data.imageType;
@@ -85,6 +134,13 @@ export class NVVoxelDataNode {
     this._percentileFrac = data.percentileFrac;
     this._useQFormNotSForm = data.useQFormNotSForm;
     this._visible = data.visible;
+    this._vox3DCount = this.hdr.dims[1] * this.hdr.dims[2] * this.hdr.dims[3];
+    this._robustMin = 0;
+    this._robustMax = 0;
+    this._globalMin = 0;
+    this._globalMax = 0;
+
+    this.initializeHeader();
   }
 
   get name() {
@@ -248,6 +304,421 @@ export class NVVoxelDataNode {
 
   get imageType() {
     return this.imageType;
+  }
+
+  get robustMin() {
+    return this._robustMin;
+  }
+  set robustMin(value) {
+    this._robustMin = value;
+  }
+
+  get robustMax() {
+    return this._robustMax;
+  }
+  set robustMax(value) {
+    this._robustMax = value;
+  }
+
+  get globalMin() {
+    return this._globalMin;
+  }
+  set globalMin(value) {
+    this._globalMin = value;
+  }
+
+  get globalMax() {
+    return this._globalMax;
+  }
+  set globalMax(value) {
+    this._globalMax = value;
+  }
+
+  initializeHeader() {
+    if (typeof this.hdr.magic == "number") {
+      this.hdr.magic = "n+1"; //fix for issue 481, where magic is set to the number 1 rather than a string
+    }
+
+    for (let i = 4; i < 7; i++)
+      if (this.hdr.dims[i] > 1) this._frame4DCount *= this.hdr.dims[i];
+    this.frame4D = Math.min(this.frame4D, this._frame4DCount - 1);
+    const vol4DCount =
+      this._dataBuffer.byteLength /
+      this._vox3DCount /
+      (this.hdr.numBitsPerVoxel / 8);
+    if (vol4DCount !== this._frame4DCount)
+      console.log(
+        "This header does not match voxel data",
+        this.hdr,
+        this._dataBuffer.byteLength
+      );
+    //1007 = NIFTI_INTENT_VECTOR; 2003 = NIFTI_INTENT_RGB_VECTOR
+    // n.b. NIfTI standard says "NIFTI_INTENT_RGB_VECTOR" should be RGBA, but FSL only stores RGB
+    if (
+      (this.hdr.intent_code === 1007 || this.hdr.intent_code === 2003) &&
+      this._frame4DCount === 3 &&
+      this.hdr.datatypeCode === DATA_BUFFER_TYPE.DT_FLOAT
+    ) {
+      const tmp = new Float32Array(this._dataBuffer);
+      const f32 = tmp.slice();
+      this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_RGB;
+      this._frame4DCount = 1;
+      for (let i = 4; i < 7; i++) {
+        this.hdr.dims[i] = 1;
+      }
+      this.hdr.dims[0] = 3; //3D
+      this._dataBuffer = new Uint8Array(this._vox3DCount * 3); //*3 for RGB
+      let mx = Math.abs(f32[0]);
+      for (let i = 0; i < this._vox3DCount * 3; i++)
+        mx = Math.max(mx, Math.abs(f32[i]));
+      let slope = 1.0;
+      if (mx > 0) slope = 1.0 / mx;
+
+      const vox3D2Count = this._vox3DCount * 2;
+      let j = 0;
+      for (let i = 0; i < this._vox3DCount; i++) {
+        this._dataBuffer[j] = 255.0 * Math.abs(f32[i] * slope);
+        this._dataBuffer[j + 1] =
+          255.0 * Math.abs(f32[i + this._vox3DCount] * slope);
+        this._dataBuffer[j + 2] =
+          255.0 * Math.abs(f32[i + vox3D2Count] * slope);
+        j += 3;
+      }
+    } //NIFTI_INTENT_VECTOR: this is a RGB tensor
+    if (
+      this.hdr.pixDims[1] === 0.0 ||
+      this.hdr.pixDims[2] === 0.0 ||
+      this.hdr.pixDims[3] === 0.0
+    ) {
+      throw new Error("pixDims not plausible");
+    }
+
+    if (isNaN(this.hdr.scl_slope) || this.hdr.scl_slope === 0.0)
+      this.hdr.scl_slope = 1.0; //https://github.com/nipreps/fmriprep/issues/2507
+    if (isNaN(this.hdr.scl_inter)) this.hdr.scl_inter = 0.0;
+    let affineOK = isAffineOK(this.hdr.affine);
+    if (
+      this._useQFormNotSForm ||
+      !affineOK ||
+      this.hdr.qform_code > this.hdr.sform_code
+    ) {
+      // TODO(cdrake): implement log
+      // log.debug("spatial transform based on QForm");
+      //https://github.com/rii-mango/NIFTI-Reader-JS/blob/6908287bf99eb3bc4795c1591d3e80129da1e2f6/src/nifti1.js#L238
+      // Define a, b, c, d for coding covenience
+      const b = this.hdr.quatern_b;
+      const c = this.hdr.quatern_c;
+      const d = this.hdr.quatern_d;
+      // quatern_a is a parameter in quaternion [a, b, c, d], which is required in affine calculation (METHOD 2)
+      // mentioned in the nifti1.h file
+      // It can be calculated by a = sqrt(1.0-(b*b+c*c+d*d))
+      const a = Math.sqrt(
+        1.0 - (Math.pow(b, 2) + Math.pow(c, 2) + Math.pow(d, 2))
+      );
+      const qfac = this.hdr.pixDims[0] === 0 ? 1 : this.hdr.pixDims[0];
+      const quatern_R = [
+        [
+          a * a + b * b - c * c - d * d,
+          2 * b * c - 2 * a * d,
+          2 * b * d + 2 * a * c,
+        ],
+        [
+          2 * b * c + 2 * a * d,
+          a * a + c * c - b * b - d * d,
+          2 * c * d - 2 * a * b,
+        ],
+        [
+          2 * b * d - 2 * a * c,
+          2 * c * d + 2 * a * b,
+          a * a + d * d - c * c - b * b,
+        ],
+      ];
+      const affine = this.hdr.affine;
+      for (let ctrOut = 0; ctrOut < 3; ctrOut += 1) {
+        for (let ctrIn = 0; ctrIn < 3; ctrIn += 1) {
+          affine[ctrOut][ctrIn] =
+            quatern_R[ctrOut][ctrIn] * this.hdr.pixDims[ctrIn + 1];
+          if (ctrIn === 2) {
+            affine[ctrOut][ctrIn] *= qfac;
+          }
+        }
+      }
+      // The last row of affine matrix is the offset vector
+      affine[0][3] = this.hdr.qoffset_x;
+      affine[1][3] = this.hdr.qoffset_y;
+      affine[2][3] = this.hdr.qoffset_z;
+      this.hdr.affine = affine;
+    }
+    affineOK = isAffineOK(this.hdr.affine);
+    if (!affineOK) {
+      // log.debug("Defective NIfTI: spatial transform does not make sense");
+      let x = this.hdr.pixDims[1];
+      let y = this.hdr.pixDims[2];
+      let z = this.hdr.pixDims[3];
+      if (isNaN(x) || x === 0.0) x = 1.0;
+      if (isNaN(y) || y === 0.0) y = 1.0;
+      if (isNaN(z) || z === 0.0) z = 1.0;
+      this.hdr.pixDims[1] = x;
+      this.hdr.pixDims[2] = y;
+      this.hdr.pixDims[3] = z;
+      const affine = [
+        [x, 0, 0, 0],
+        [0, y, 0, 0],
+        [0, 0, z, 0],
+        [0, 0, 0, 1],
+      ];
+      this.hdr.affine = affine;
+    } //defective affine
+    //swap data if foreign endian:
+    if (
+      this.hdr.datatypeCode !== DATA_BUFFER_TYPE.DT_RGB &&
+      this.hdr.datatypeCode !== DATA_BUFFER_TYPE.DT_RGBA32 &&
+      this.hdr.littleEndian !== isPlatformLittleEndian() &&
+      this.hdr.numBitsPerVoxel > 8
+    ) {
+      if (this.hdr.numBitsPerVoxel === 16) {
+        //inspired by https://github.com/rii-mango/Papaya
+        const u16 = new Uint16Array(this._dataBuffer);
+        for (let i = 0; i < u16.length; i++) {
+          const val = u16[i];
+          u16[i] = ((((val & 0xff) << 8) | ((val >> 8) & 0xff)) << 16) >> 16; // since JS uses 32-bit  when bit shifting
+        }
+      } else if (this.hdr.numBitsPerVoxel === 32) {
+        //inspired by https://github.com/rii-mango/Papaya
+        const u32 = new Uint32Array(this._dataBuffer);
+        for (let i = 0; i < u32.length; i++) {
+          const val = u32[i];
+          u32[i] =
+            ((val & 0xff) << 24) |
+            ((val & 0xff00) << 8) |
+            ((val >> 8) & 0xff00) |
+            ((val >> 24) & 0xff);
+        }
+      } else if (this.hdr.numBitsPerVoxel === 64) {
+        //inspired by MIT licensed code: https://github.com/rochars/endianness
+        const numBytesPerVoxel = this.hdr.numBitsPerVoxel / 8;
+        const u8 = new Uint8Array(this._dataBuffer);
+        for (let index = 0; index < u8.length; index += numBytesPerVoxel) {
+          let offset = numBytesPerVoxel - 1;
+          for (let x = 0; x < offset; x++) {
+            const theByte = u8[index + x];
+            u8[index + x] = u8[index + offset];
+            u8[index + offset] = theByte;
+            offset--;
+          }
+        }
+      } //if 64-bits
+    } //swap byte order
+    switch (this.hdr.datatypeCode) {
+      case DATA_BUFFER_TYPE.DT_UNSIGNED_CHAR:
+        this._dataBuffer = new Uint8Array(this._dataBuffer);
+        break;
+      case DATA_BUFFER_TYPE.DT_SIGNED_SHORT:
+        this._dataBuffer = new Int16Array(this._dataBuffer);
+
+        break;
+      case DATA_BUFFER_TYPE.DT_FLOAT:
+        this._dataBuffer = new Float32Array(this._dataBuffer);
+        break;
+      case DATA_BUFFER_TYPE.DT_DOUBLE:
+        this._dataBuffer = new Float64Array(this._dataBuffer);
+        break;
+      case DATA_BUFFER_TYPE.DT_RGB:
+        this._dataBuffer = new Uint8Array(this._dataBuffer);
+        break;
+      case DATA_BUFFER_TYPE.DT_UINT16:
+        this._dataBuffer = new Uint16Array(this._dataBuffer);
+        break;
+      case DATA_BUFFER_TYPE.DT_RGBA32:
+        this._dataBuffer = new Uint8Array(this._dataBuffer);
+        break;
+      case DATA_BUFFER_TYPE.DT_INT8: {
+        const i8 = new Int8Array(this._dataBuffer);
+        const vx8 = i8.length;
+        this._dataBuffer = new Int16Array(vx8);
+        for (let i = 0; i < vx8 - 1; i++) this._dataBuffer[i] = i8[i];
+        this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_SIGNED_SHORT;
+        break;
+      }
+      case DATA_BUFFER_TYPE.DT_UINT32: {
+        const u32 = new Uint32Array(this._dataBuffer);
+        const vx32 = u32.length;
+        this._dataBuffer = new Float64Array(vx32);
+        for (let i = 0; i < vx32 - 1; i++) this._dataBuffer[i] = u32[i];
+        this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_DOUBLE;
+        break;
+      }
+      case DATA_BUFFER_TYPE.DT_SIGNED_INT: {
+        const i32 = new Int32Array(this._dataBuffer);
+        const vxi32 = i32.length;
+        this._dataBuffer = new Float64Array(vxi32);
+        for (let i = 0; i < vxi32 - 1; i++) this._dataBuffer[i] = i32[i];
+        this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_DOUBLE;
+        break;
+      }
+      case DATA_BUFFER_TYPE.DT_INT64: {
+        // eslint-disable-next-line no-undef
+        const i64 = new BigInt64Array(this._dataBuffer);
+        const vx = i64.length;
+        this._dataBuffer = new Float64Array(vx);
+        for (let i = 0; i < vx - 1; i++) this._dataBuffer[i] = Number(i64[i]);
+        this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_DOUBLE;
+        break;
+      }
+      default:
+        throw "datatype " + this.hdr.datatypeCode + " not supported";
+    }
+    this.calculateRAS();
+    if (!isNaN(this._calMin)) this.hdr.cal_min = this._calMin;
+    if (!isNaN(this._calMax)) this.hdr.cal_max = this._calMax;
+    this.calMinMax();
+  }
+
+  calMinMax(): number[] {
+    // const cm = this._colorMap;
+    // const allColorMaps = this.colorMaps();
+    const cmMin = 0;
+    const cmMax = 0;
+    // if (allColorMaps.indexOf(cm.toLowerCase()) !== -1) {
+    //   cmMin = cmaps[cm.toLowerCase()].min;
+    //   cmMax = cmaps[cm.toLowerCase()].max;
+    // }
+
+    if (
+      cmMin === cmMax &&
+      this._calMinMaxTrusted &&
+      isFinite(this.hdr.cal_min) &&
+      isFinite(this.hdr.cal_max) &&
+      this.hdr.cal_max > this.hdr.cal_min
+    ) {
+      this._calMin = this.hdr.cal_min;
+      this._calMax = this.hdr.cal_max;
+      this._robustMin = this._calMin;
+      this._robustMax = this._calMax;
+      this._globalMin = this.hdr.cal_min;
+      this._globalMax = this.hdr.cal_max;
+      return [
+        this.hdr.cal_min,
+        this.hdr.cal_max,
+        this.hdr.cal_min,
+        this.hdr.cal_max,
+      ];
+    }
+    // if color map specifies non zero values for min and max then use them
+    if (cmMin != cmMax) {
+      this._calMin = cmMin;
+      this._calMax = cmMax;
+      this._robustMin = this._calMin;
+      this._robustMax = this._calMax;
+      return [cmMin, cmMax, cmMin, cmMax];
+    }
+    //determine full range: min..max
+    let mn = this._dataBuffer[0];
+    let mx = this._dataBuffer[0];
+    let nZero = 0;
+    let nNan = 0;
+    const nVox = this._dataBuffer.length;
+    for (let i = 0; i < nVox; i++) {
+      // https://stackoverflow.com/questions/59863215/isnan-throwing-an-error-when-passing-a-bigint
+      if (isNaN(Number(this._dataBuffer[i]))) {
+        nNan++;
+        continue;
+      }
+      if (this._dataBuffer[i] === 0) {
+        nZero++;
+        if (this.ignoreZeroVoxels) {
+          continue;
+        }
+      }
+      mn = Math.min(Number(this._dataBuffer[i]), Number(mn));
+      mx = Math.max(Number(this._dataBuffer[i]), Number(mx));
+    }
+    const mnScale = this.intensityRaw2Scaled(Number(mn));
+    const mxScale = this.intensityRaw2Scaled(Number(mx));
+    if (!this.ignoreZeroVoxels) nZero = 0;
+    nZero += nNan;
+    const n2pct = Math.round((nVox - nZero) * this.percentileFrac);
+    if (n2pct < 1 || mn === mx) {
+      // log.debug("no variability in image intensity?");
+      this._calMin = mnScale;
+      this._calMax = mxScale;
+      this._robustMin = this._calMin;
+      this._robustMax = this._calMax;
+      this._globalMin = mnScale;
+      this._globalMax = mxScale;
+      return [mnScale, mxScale, mnScale, mxScale];
+    }
+    const nBins = 1001;
+    const scl = (nBins - 1) / (Number(mx) - Number(mn));
+    const hist = new Array(nBins);
+    for (let i = 0; i < nBins; i++) {
+      hist[i] = 0;
+    }
+    if (this.ignoreZeroVoxels) {
+      for (let i = 0; i <= nVox; i++) {
+        if (this._dataBuffer[i] === 0) continue;
+        if (isNaN(Number(this._dataBuffer[i]))) continue;
+        hist[Math.round(Number(this._dataBuffer[i]) - Number(mn) * scl)]++;
+      }
+    } else {
+      for (let i = 0; i <= nVox; i++) {
+        if (isNaN(Number(this._dataBuffer[i]))) {
+          continue;
+        }
+        hist[Math.round((Number(this._dataBuffer[i]) - Number(mn)) * scl)]++;
+      }
+    }
+    let n = 0;
+    let lo = 0;
+    while (n < n2pct) {
+      n += hist[lo];
+      lo++;
+    }
+    lo--; //remove final increment
+    n = 0;
+    let hi = nBins;
+    while (n < n2pct) {
+      hi--;
+      n += hist[hi];
+    }
+    if (lo == hi) {
+      //MAJORITY are not black or white
+      let ok = -1;
+      while (ok !== 0) {
+        if (lo > 0) {
+          lo--;
+          if (hist[lo] > 0) ok = 0;
+        }
+        if (ok != 0 && hi < nBins - 1) {
+          hi++;
+          if (hist[hi] > 0) ok = 0;
+        }
+        if (lo == 0 && hi == nBins - 1) ok = 0;
+      } //while not ok
+    } //if lo == hi
+    let pct2 = this.intensityRaw2Scaled(lo / scl + Number(mn));
+    let pct98 = this.intensityRaw2Scaled(hi / scl + Number(mn));
+    if (
+      this.hdr.cal_min < this.hdr.cal_max &&
+      this.hdr.cal_min >= mnScale &&
+      this.hdr.cal_max <= mxScale
+    ) {
+      pct2 = this.hdr.cal_min;
+      pct98 = this.hdr.cal_max;
+    }
+    this._calMin = pct2;
+    this._calMax = pct98;
+    this._robustMin = this._calMin;
+    this._robustMax = this._calMax;
+    this._globalMin = mnScale;
+    this._globalMax = mxScale;
+    return [pct2, pct98, mnScale, mxScale];
+  }
+  intensityRaw2Scaled(raw: number): number {
+    if (this.hdr.scl_slope === 0) {
+      this.hdr.scl_slope = 1.0;
+    }
+    return raw * this.hdr.scl_slope + this.hdr.scl_inter;
   }
 
   calculateRAS(): void {
