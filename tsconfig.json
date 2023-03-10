@@ -6,7 +6,7 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "jsx": "react-jsx",
-    "types": ["vite/client", "node", "react"],
+    "types": ["vite/client", "node", "react", "jest"],
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,

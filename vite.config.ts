@@ -2,10 +2,11 @@ import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import glsl from "vite-plugin-glsl";
+// import plainText from "vite-plugin-plain-text";
 
 export default defineConfig({
   base: "./",
-  plugins: [glsl(), react()],
+  plugins: [glsl(), react()], //, plainText(["base64.txt"])
   build: {
     sourcemap: true,
     lib: {

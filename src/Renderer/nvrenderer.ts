@@ -51,46 +51,46 @@ export class NVRenderer {
     this._gl = gl;
     this._shaderSources.set("bmp.frag", bmpFrag);
     this._shaderSources.set("bmp.vert", bmpVert);
-    
+
     this._shaderSources.set("colorbar.frag", colorBarFrag);
     this._shaderSources.set("colorbar.vert", colorBarVert);
-    
+
     this._shaderSources.set("fiber.frag", fiberFrag);
     this._shaderSources.set("fiber.vert", fiberVert);
-    
-    this._shaderSources.set("flat_mesh.frag",flatMeshFrag);
+
+    this._shaderSources.set("flat_mesh.frag", flatMeshFrag);
     this._shaderSources.set("flat_mesh.vert", flatMeshVert);
-    
-    this._shaderSources.set("font.frag",fontFrag);
+
+    this._shaderSources.set("font.frag", fontFrag);
     this._shaderSources.set("font.vert", fontVert);
-    
-    this._shaderSources.set("growcut.frag",growcutFrag);
+
+    this._shaderSources.set("growcut.frag", growcutFrag);
     this._shaderSources.set("growcut.vert", growcutVert);
-    
+
     this._shaderSources.set("line.vert", lineVert);
 
-    this._shaderSources.set("mesh_depth.frag",meshDepthFrag);
-    this._shaderSources.set("mesh_edge.frag",meshEdgeFrag);
-    this._shaderSources.set("mesh_hemi.frag",meshHemiFrag);
-    this._shaderSources.set("mesh_matcap.frag",meshMatcapFrag);
-    this._shaderSources.set("mesh_matte.frag",meshMatteFrag);
-    this._shaderSources.set("mesh_outline.frag",meshOutlineFrag);
-    this._shaderSources.set("mesh_shblue.frag",meshSHBlueFrag);
-    this._shaderSources.set("mesh_toon.frag",meshToonFrag);
+    this._shaderSources.set("mesh_depth.frag", meshDepthFrag);
+    this._shaderSources.set("mesh_edge.frag", meshEdgeFrag);
+    this._shaderSources.set("mesh_hemi.frag", meshHemiFrag);
+    this._shaderSources.set("mesh_matcap.frag", meshMatcapFrag);
+    this._shaderSources.set("mesh_matte.frag", meshMatteFrag);
+    this._shaderSources.set("mesh_outline.frag", meshOutlineFrag);
+    this._shaderSources.set("mesh_shblue.frag", meshSHBlueFrag);
+    this._shaderSources.set("mesh_toon.frag", meshToonFrag);
     this._shaderSources.set("mesh.frag", meshFrag);
     this._shaderSources.set("mesh.vert", meshVert);
 
     this._shaderSources.set("orient_cube.frag", orientCubeFrag);
     this._shaderSources.set("orient_cube.vert", orientCubeVert);
-    
-    this._shaderSources.set("orient_f.frag",orientFFrag);
-    this._shaderSources.set("orient_i.frag",orientIFrag);
-    this._shaderSources.set("orient_rgb.frag",orientRGBFrag);
-    this._shaderSources.set("orient_u.frag",orientUFrag);
+
+    this._shaderSources.set("orient_f.frag", orientFFrag);
+    this._shaderSources.set("orient_i.frag", orientIFrag);
+    this._shaderSources.set("orient_rgb.frag", orientRGBFrag);
+    this._shaderSources.set("orient_u.frag", orientUFrag);
 
     this._shaderSources.set("orient.frag", orientFrag);
     this._shaderSources.set("orient.vert", orientVert);
-    
+
     this._shaderSources.set("rect.frag", rectFrag);
     this._shaderSources.set("rect.vert", rectVert);
 
@@ -105,6 +105,5 @@ export class NVRenderer {
     this._shaderSources.set("surface.vert", surfaceVert);
 
     this._shaderSources.set("volume_picking.frag", volumePickingFrag);
-
   }
 }

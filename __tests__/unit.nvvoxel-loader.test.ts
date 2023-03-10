@@ -1,5 +1,21 @@
 import { describe, expect, test } from "@jest/globals";
-import { NVVoxelLoaderOptions } from "../src/ResourceLoader/nvvoxel-loader";
+
+import {
+  NVVoxelLoaderOptions,
+  NVVoxelLoader,
+} from "../src/ResourceLoader/nvvoxel-loader";
+import { NVIMAGE_TYPE } from "../src/nifti/nifit-image-data";
+// import * as base64 from "./base64.txt";
+
+function _base64ToArrayBuffer(base64Text) {
+  const binary_string = window.atob(base64Text);
+  const len = binary_string.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary_string.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
 
 describe("nvvoxel-loader", () => {
   test("Options initialized from url", () => {
@@ -35,4 +51,19 @@ describe("nvvoxel-loader", () => {
     const resultBuffer = dataBufferOptions.dataBuffer as Uint8Array;
     expect(resultBuffer.length).toEqual(15);
   });
+
+  // test("Images is fetched", async () => {
+  //   const array = _base64ToArrayBuffer(base64);
+  //   global.fetch = jest.fn(() =>
+  //     Promise.resolve({
+  //       arrayBuffer: () => Promise.resolve(array),
+  //     })
+  //   ) as jest.Mock;
+
+  //   const url = "http://localhost:5173";
+  //   const dataItem = await NVVoxelLoader.load(
+  //     new NVVoxelLoaderOptions({ url, imageType: NVIMAGE_TYPE.NII })
+  //   );
+  //   expect(dataItem.hdr).toBeDefined();
+  // });
 });
