@@ -1,8 +1,28 @@
+import {
+  NVVoxelLoaderOptions,
+  NVVoxelLoader,
+} from "ResourceLoader/nvvoxel-loader";
+import { NVVoxelDataItem } from "Data/nvvoxel-data-item";
 import { NVVoxelDataNode } from "Data/nvoxel-data-node";
+
 import { NV3dNode } from "Scene/nv3d-node";
 import { mat4, vec3, vec4 } from "gl-matrix";
 
+/**
+ * Responsible for updating scene graph and data graph
+ */
 export class NVController {
+  /**
+   * Loads a nifti image from url
+   * @param {string} url
+   * @returns {NVVoxelDataNode}
+   */
+  public async loadImageFromUrl(url: string): Promise<NVVoxelDataNode> {
+    const options = new NVVoxelLoaderOptions({ url });
+    const dataItem: NVVoxelDataItem = await NVVoxelLoader.load(options);
+    return new NVVoxelDataNode(dataItem);
+  }
+
   /**
    * Converts voxel space into millimetric space
    * @param {number[]} xyz - Voxel position (row, colum, slice)

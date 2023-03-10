@@ -299,11 +299,11 @@ export class NVVoxelDataNode {
   }
 
   get dataType() {
-    return this.dataType;
+    return this._dataType;
   }
 
   get imageType() {
-    return this.imageType;
+    return this._imageType;
   }
 
   get robustMin() {
