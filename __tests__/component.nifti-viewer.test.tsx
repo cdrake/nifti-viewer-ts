@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { render, unmountComponentAtNode } from "react-dom";
+// import { unmountComponentAtNode } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import { describe, expect, test, beforeEach, afterEach } from "@jest/globals";
 import NiftiViewer from "../src/NiftiViewer";
@@ -20,16 +21,17 @@ beforeEach(() => {
 afterEach(() => {
   // cleanup on exiting
   if (container) {
-    unmountComponentAtNode(container);
+    // unmountComponentAtNode(container);
     container.remove();
   }
   container = null;
 });
 
 describe("NiftiViewer component", () => {
-  test("renders with a host id", () => {
-    act(() => {
-      render(<NiftiViewer hostId="host-id" />, container);
+  test("renders with a host id", async () => {
+    await act(async () => {
+      const root = createRoot(container as HTMLElement);
+      root.render(<NiftiViewer hostId="host-id" />);
     });
     expect(container).not.toBeNull();
     if (container) {

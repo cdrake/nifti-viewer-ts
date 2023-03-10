@@ -1,6 +1,5 @@
-import { afterAll, beforeAll } from "@jest/globals";
+import { expect, test, afterAll, beforeAll } from "@jest/globals";
 import { Browser, Page, launch } from "puppeteer";
-import { expect, test } from "@jest/globals";
 
 let browser: Browser | undefined;
 let page: Page | undefined;
@@ -19,7 +18,6 @@ beforeAll(async () => {
 
   await page.goto("http://localhost:5173");
 }, 30_000);
-
 test("Viewer Control binds to correct host", async () => {
   await sleep(1_000);
 
@@ -47,6 +45,9 @@ test("Viewer Control binds to correct host", async () => {
   // );
   const hostIdSpan = await page.$("#host-id-span");
   if (!hostIdSpan) {
+    const body = await page.$("body");
+    const text = await (await body?.getProperty("innerText"))?.jsonValue;
+    console.log(text);
     throw new Error("Can't find the counter span");
   }
   // const hostIdSpanValue = await hostIdSpan.evaluate(
@@ -58,4 +59,9 @@ test("Viewer Control binds to correct host", async () => {
 
   expect(hostIdSpanValue).toBe("viewer-host");
 }, 30_000);
-afterAll(async () => await browser?.close?.());
+
+afterAll(async () => {
+  if (browser) {
+    await browser.close();
+  }
+});

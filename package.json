@@ -18,8 +18,9 @@
     "lint:styles": "stylelint ./**/*.{css,scss}",
     "format:scripts": "prettier . --write",
     "format:styles": "stylelint ./**/*.{css,scss} --fix",
-    "test": "jest",
-    "ci": "BROWSER=none PORT=3000 start-server-and-test start http://localhost:3000 test"
+    "start-integration-test": "wait-on tcp:5173 && jest && npx kill-port 5173",
+    "start-test-server": "vite --host",
+    "test": "concurrently  \"npm:start-test-server\" \"npm:start-integration-test\""
   },
   "dependencies": {
     "daikon": "^1.2.42",
@@ -36,6 +37,8 @@
     "@babel/preset-env": "^7.20.2",
     "@babel/preset-typescript": "^7.21.0",
     "@jest/globals": "^29.4.3",
+    "@testing-library/dom": "^9.0.1",
+    "@testing-library/react": "^14.0.0",
     "@types/jest": "^29.4.0",
     "@types/puppeteer": "^7.0.4",
     "@types/react": "^18.0.26",
@@ -44,6 +47,7 @@
     "@typescript-eslint/parser": "^5.46.0",
     "@vitejs/plugin-react": "^3.0.0",
     "babel-jest": "^29.4.3",
+    "concurrently": "^7.6.0",
     "dts-bundle-generator": "^7.1.0",
     "eslint": "^8.29.0",
     "eslint-config-prettier": "^8.5.0",
@@ -62,6 +66,7 @@
     "tslib": "^2.4.1",
     "typescript": "^4.9.4",
     "vite": "^4.0.0",
-    "vite-plugin-glsl": "^1.1.2"
+    "vite-plugin-glsl": "^1.1.2",
+    "wait-on": "^7.0.1"
   }
 }
