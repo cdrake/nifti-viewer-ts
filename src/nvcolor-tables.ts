@@ -13,12 +13,22 @@ export class NVColorTables {
       .map((e) => e[0].toLowerCase());
   }
 
+  /**
+   * Returns a list of loaded color maps
+   * @param {boolean} sorted Whether to sort the array alphabetically
+   * @returns {string[]}
+   */
   listColorMaps(sorted = true): string[] {
     return sorted
       ? [...this._colorLookupTableNames].sort()
       : [...this._colorLookupTableNames];
   }
 
+  /**
+   * Returns a color lookup table
+   * @param {string} lutName Lookup table name
+   * @returns {Uint8ClampedArray}
+   */
   getColormap(lutName = "gray") {
     if (this._colorLookupTableCache.has(lutName)) {
       return this._colorLookupTableCache.get(lutName);
