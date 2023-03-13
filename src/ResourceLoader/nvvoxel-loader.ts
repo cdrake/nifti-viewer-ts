@@ -115,7 +115,11 @@ export class NVVoxelLoader {
       const dataBuffer = await response.arrayBuffer();
       switch (loaderOptions.imageType) {
         case NVIMAGE_TYPE.NII:
+          console.log("data buffer length");
+          console.log(dataBuffer.byteLength);
           hdr = nifti.readHeader(dataBuffer);
+          console.log("size_of_hdr");
+          console.log(hdr.size_of_hdr);
           if (hdr.cal_min === 0 && hdr.cal_max === 255) {
             hdr.cal_max = 0.0;
           }

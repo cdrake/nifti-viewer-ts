@@ -1,3 +1,6 @@
+/**
+ * @jest-environment jsdom
+ */
 import { describe, expect, test } from "@jest/globals";
 
 import {
@@ -5,7 +8,7 @@ import {
   NVVoxelLoader,
 } from "../src/ResourceLoader/nvvoxel-loader";
 import { NVIMAGE_TYPE } from "../src/nifti/nifit-image-data";
-// import * as base64 from "./base64.txt";
+import { sampleNiftiBase64 as base64 } from "./data/sample-nifti-base64";
 
 function _base64ToArrayBuffer(base64Text) {
   const binary_string = window.atob(base64Text);
@@ -52,18 +55,19 @@ describe("nvvoxel-loader", () => {
     expect(resultBuffer.length).toEqual(15);
   });
 
-  // test("Images is fetched", async () => {
-  //   const array = _base64ToArrayBuffer(base64);
-  //   global.fetch = jest.fn(() =>
-  //     Promise.resolve({
-  //       arrayBuffer: () => Promise.resolve(array),
-  //     })
-  //   ) as jest.Mock;
+  test("Images is fetched", async () => {
+    const array = _base64ToArrayBuffer(base64);
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        arrayBuffer: () => Promise.resolve(array),
+      })
+    ) as jest.Mock;
 
-  //   const url = "http://localhost:5173";
-  //   const dataItem = await NVVoxelLoader.load(
-  //     new NVVoxelLoaderOptions({ url, imageType: NVIMAGE_TYPE.NII })
-  //   );
-  //   expect(dataItem.hdr).toBeDefined();
-  // });
+    const url = "http://localhost:5173";
+    const dataItem = await NVVoxelLoader.load(
+      new NVVoxelLoaderOptions({ url, imageType: NVIMAGE_TYPE.NII })
+    );
+    expect(dataItem.hdr).toBeDefined();
+    expect(dataItem.hdr.description).toEqual("FSL3.2beta");
+  });
 });

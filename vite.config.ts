@@ -5,8 +5,9 @@ import glsl from "vite-plugin-glsl";
 // import plainText from "vite-plugin-plain-text";
 
 export default defineConfig({
+  assetsInclude: ["**/*.txt"], //plainText(["**/*.txt"])
   base: "./",
-  plugins: [glsl(), react()], //, plainText(["base64.txt"])
+  plugins: [glsl(), react()],
   build: {
     sourcemap: true,
     lib: {
