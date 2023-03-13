@@ -6,7 +6,7 @@ import {
   NVVoxelLoaderOptions,
 } from "./ResourceLoader/nvvoxel-loader";
 import { NVIMAGE_TYPE } from "./nifti/nifti-image-data";
-
+import { NVColorTables } from "./nvcolor-tables";
 interface IProps {
   hostId?: string;
 }
@@ -19,6 +19,9 @@ export class NiftiHeaderViewer extends React.Component<IProps, IState> {
   dataNode: NVVoxelDataNode | undefined;
   constructor(props: IProps) {
     super(props);
+
+    const colorTables = new NVColorTables();
+    console.log(colorTables);
   }
 
   async loadUrl() {

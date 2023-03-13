@@ -174,6 +174,7 @@ export default {
   // A map from regular expressions to paths to transformers
   transform: {
     "^.+\\.tsx?$": "ts-jest",
+    "^.+\\.(js)$": "babel-jest", // https://github.com/facebook/jest/issues/8426
   },
   // transform: {
   //   "^.+\\.[jt]sx?$": "babel-jest",
