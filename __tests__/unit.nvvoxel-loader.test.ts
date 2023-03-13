@@ -20,6 +20,19 @@ function _base64ToArrayBuffer(base64Text) {
   return bytes.buffer;
 }
 
+const compareArrays = (a, b) => {
+  if (a.length !== b.length) return false;
+  else {
+    // Comparing each element of your array
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
 describe("nvvoxel-loader", () => {
   test("Options initialized from url", () => {
     const url = "https://localhost:8080/url";
@@ -55,6 +68,7 @@ describe("nvvoxel-loader", () => {
     expect(resultBuffer.length).toEqual(15);
   });
 
+  // values from https://nifti.nimh.nih.gov/nifti-1/data/avg152T1_LR_nifti_ntool.txt
   test("Images is fetched", async () => {
     const array = _base64ToArrayBuffer(base64);
     global.fetch = jest.fn(() =>
@@ -69,5 +83,14 @@ describe("nvvoxel-loader", () => {
     );
     expect(dataItem.hdr).toBeDefined();
     expect(dataItem.hdr.description).toEqual("FSL3.2beta");
+    expect(dataItem.hdr.magic).toEqual("n+1");
+    const dims = [3, 91, 109, 91, 1, 1, 1, 1];
+    let arraysAreEqual = compareArrays(dims, dataItem.hdr.dims);
+    expect(arraysAreEqual).toEqual(true);
+    const pixDims = [0.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0];
+    arraysAreEqual = compareArrays(pixDims, dataItem.hdr.pixDims);
+    expect(arraysAreEqual).toEqual(true);
+    // expect(dataItem.hdr.cal_max).toEqual(255);
+    expect(dataItem.hdr.cal_min).toEqual(0);
   });
 });
