@@ -1,6 +1,6 @@
 import nifti from "nifti-reader-js";
 
-import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifit-image-data";
+import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifti-image-data"; //"../nifti/nifti-image-data";
 import { NVVoxelDataItem } from "Data/nvvoxel-data-item";
 import { mat4 } from "gl-matrix";
 
@@ -116,10 +116,15 @@ export class NVVoxelLoader {
       switch (loaderOptions.imageType) {
         case NVIMAGE_TYPE.NII:
           hdr = nifti.readHeader(dataBuffer);
+          //kludge for bogus BrainVoyager values, see GSGData.zip at https://brainvoyager.com/bv/sampledata/index.html
           if (hdr.cal_min === 0 && hdr.cal_max === 255) {
             hdr.cal_max = 0.0;
           }
-          imgRaw = nifti.readImage(hdr, dataBuffer);
+          if (nifti.isCompressed(dataBuffer)) {
+            imgRaw = nifti.readImage(hdr, nifti.decompress(dataBuffer));
+          } else {
+            imgRaw = nifti.readImage(hdr, dataBuffer);
+          }
           break;
         default:
           throw new Error("Image type not supported");

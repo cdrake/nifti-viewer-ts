@@ -1,6 +1,7 @@
 import logo from "./logo.svg";
 import "./App.css";
-import NiftiViewer from "./NiftiViewer";
+// import NiftiViewer from "./NiftiViewer";
+import { NiftiHeaderViewer } from "./NiftiHeaderViewer";
 
 function App() {
   return (
@@ -20,7 +21,8 @@ function App() {
         </a>
       </header>
       <div id="viewer-host"></div>
-      <NiftiViewer hostId="viewer-host" />
+      {/* <NiftiViewer hostId="viewer-host" /> */}
+      <NiftiHeaderViewer hostId="viewer-host" />
     </div>
   );
 }

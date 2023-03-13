@@ -7,10 +7,11 @@ import {
   NVVoxelLoaderOptions,
   NVVoxelLoader,
 } from "../src/ResourceLoader/nvvoxel-loader";
-import { NVIMAGE_TYPE } from "../src/nifti/nifit-image-data";
+import { NVIMAGE_TYPE } from "../src/nifti/nifti-image-data";
 import { sampleNiftiBase64 as base64 } from "./data/sample-nifti-base64";
+import { sampleNiftiGzBase64 as gzBase64 } from "./data/sample-nifti-gz-base64";
 
-function _base64ToArrayBuffer(base64Text) {
+function base64ToArrayBuffer(base64Text: string) {
   const binary_string = window.atob(base64Text);
   const len = binary_string.length;
   const bytes = new Uint8Array(len);
@@ -69,8 +70,33 @@ describe("nvvoxel-loader", () => {
   });
 
   // values from https://nifti.nimh.nih.gov/nifti-1/data/avg152T1_LR_nifti_ntool.txt
-  test("Images is fetched", async () => {
-    const array = _base64ToArrayBuffer(base64);
+  test("Nifti header loaded from uncompressed file", async () => {
+    const array = base64ToArrayBuffer(base64);
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        arrayBuffer: () => Promise.resolve(array),
+      })
+    ) as jest.Mock;
+
+    const url = "http://localhost:5173";
+    const dataItem = await NVVoxelLoader.load(
+      new NVVoxelLoaderOptions({ url, imageType: NVIMAGE_TYPE.NII })
+    );
+    expect(dataItem.hdr).toBeDefined();
+    expect(dataItem.hdr.description).toEqual("FSL3.2beta");
+    expect(dataItem.hdr.magic).toEqual("n+1");
+    const dims = [3, 91, 109, 91, 1, 1, 1, 1];
+    let arraysAreEqual = compareArrays(dims, dataItem.hdr.dims);
+    expect(arraysAreEqual).toEqual(true);
+    const pixDims = [0.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0];
+    arraysAreEqual = compareArrays(pixDims, dataItem.hdr.pixDims);
+    expect(arraysAreEqual).toEqual(true);
+    // expect(dataItem.hdr.cal_max).toEqual(255);
+    expect(dataItem.hdr.cal_min).toEqual(0);
+  });
+
+  test("Nifti header loaded from compressed file", async () => {
+    const array = base64ToArrayBuffer(gzBase64);
     global.fetch = jest.fn(() =>
       Promise.resolve({
         arrayBuffer: () => Promise.resolve(array),

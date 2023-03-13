@@ -1,4 +1,4 @@
-import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifit-image-data";
+import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifti-image-data";
 import { NVVoxelDataItem } from "./nvvoxel-data-item";
 import { v4 as uuidv4 } from "uuid";
 import * as nifti from "nifti-reader-js";
