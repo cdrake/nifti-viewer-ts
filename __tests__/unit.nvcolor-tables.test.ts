@@ -10,7 +10,7 @@ describe("nvcolor-tables", () => {
     expect(colorTable._colorLookupTableNames.length).toEqual(57);
     const startsWithUndescoreCount = colorTable._colorLookupTableNames.filter(
       (n) => n.startsWith("_")
-    );
+    ).length;
     expect(startsWithUndescoreCount).toEqual(0);
   });
 
