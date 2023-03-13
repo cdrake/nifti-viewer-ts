@@ -6,7 +6,7 @@ import {
   NVVoxelLoaderOptions,
 } from "./ResourceLoader/nvvoxel-loader";
 import { NVIMAGE_TYPE } from "./nifti/nifti-image-data";
-import { NVColorTables } from "./nvcolor-tables";
+import { NVColorTables } from "./Controller/nvcolor-tables";
 interface IProps {
   hostId?: string;
 }

@@ -1,4 +1,4 @@
-import * as cmaps from "./cmaps";
+import * as cmaps from "../cmaps";
 
 export class NVColorTables {
   version = 0.1;
