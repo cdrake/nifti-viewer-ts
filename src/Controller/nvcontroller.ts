@@ -5,13 +5,16 @@ import {
 import { NVVoxelDataItem } from "Data/nvvoxel-data-item";
 import { NVVoxelDataNode } from "Data/nvoxel-data-node";
 
-import { NV3dNode } from "Scene/nv3d-node";
+import { NV3dVoxelNode } from "Scene/nv3d-voxel-node";
 import { mat4, vec3, vec4 } from "gl-matrix";
+import { NVVoxelViewDataNode } from "Data/nvvoxel-view-data-node";
+import { NVColorTables } from "./nvcolor-tables";
 
 /**
  * Responsible for updating scene graph and data graph
  */
 export class NVController {
+  _colorTables = new NVColorTables();
   /**
    * Loads a nifti image from url
    * @param {string} url
@@ -38,10 +41,81 @@ export class NVController {
     return pos3;
   }
 
-  public to3dNode(
+  public generateTextureFromVoxelViewDataNode(gl: WebGL2RenderingContext,
+    dataNode: NVVoxelViewDataNode): WebGLTexture | null {
+    const dims = dataNode.dimsRAS;
+    if (!dims) {
+      throw new Error("Dimensions undefined for volume")
+    }
+
+    // Create color texture to combine with voxel intesity values
+    let colorMap = this._colorTables.getColormap(dataNode.colorMap);
+    if(!colorMap) {
+      throw new Error("Color map not found");
+    }
+    let colorMapTexture = gl.createTexture();
+    if(!colorMapTexture) {
+      throw new Error("Could not create texture");
+    }
+    gl.bindTexture(gl.TEXTURE_2D, colorMapTexture);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, 256, 1);
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MIN_FILTER,
+      gl.LINEAR
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MAG_FILTER,
+      gl.LINEAR
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_WRAP_R,
+      gl.LINEAR
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_WRAP_S,
+      gl.LINEAR
+    );
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(colorMap.buffer));
+
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_3D, texture);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    let img8 = new Uint8Array(dims[1] * dims[2] * dims[3] * 4);
+    gl.texStorage3D(gl.TEXTURE_3D, 1, gl.RGBA8, dims[1], dims[2], dims[3]);
+    // gl.texSubImage3D(
+    //   gl.TEXTURE_3D, 
+    //   0, 
+    //   0, 
+    //   0, 
+    //   0, 
+    //   dims[1],
+    //   dims[2],
+    //   dims[3], 
+    //   gl.RGBA, 
+    //   gl.UNSIGNED_BYTE, 
+    //   img8);
+    return texture;
+  }
+
+  /**
+   * Creates a 3d Voxel Node from a {@link NVVoxelViewDataNode}
+   * @param { WebGLRenderingContext } gl 
+   * @param { NVVoxelViewDataNode } dataNode 
+   * @returns { NV3dVoxelNode }
+   */
+  public to3dVoxelNode(
     gl: WebGL2RenderingContext,
-    dataNode: NVVoxelDataNode
-  ): NV3dNode | null {
+    dataNode: NVVoxelViewDataNode
+  ): NV3dVoxelNode | null {
     //cube has 8 vertices: left/right, posterior/anterior, inferior/superior
     //n.b. voxel coordinates are from VOXEL centers
     // add/subtract 0.5 to get full image field of view
@@ -163,13 +237,18 @@ export class NVController {
     gl.bindVertexArray(null);
 
     if (posTexBuffer && indexBuffer && vao) {
-      const node = new NV3dNode(
+      const node = new NV3dVoxelNode(
         posTexBuffer,
         gl.TRIANGLES,
         indices.length,
         indexBuffer,
-        vao
+        vao,
+        dataNode.clipPlaneDepthAziElev,
+        dataNode.scale,
+        dataNode.baseVolumeDims
       );
+      // add textures
+
       return node;
     }
     return null;

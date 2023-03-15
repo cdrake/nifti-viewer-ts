@@ -52,3 +52,10 @@ export enum DATA_BUFFER_TYPE {
   DT_COMPLEX256 = 2048,
   DT_RGBA32 = 2304,
 }
+
+export type NiftiDataBuffer =
+  | Uint8Array
+  | Uint16Array
+  | Uint16Array
+  | BigUint64Array
+  | Float32Array

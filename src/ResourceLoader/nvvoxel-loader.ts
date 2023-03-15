@@ -1,6 +1,6 @@
 import nifti from "nifti-reader-js";
 
-import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifti-image-data"; //"../nifti/nifti-image-data";
+import { DATA_BUFFER_TYPE, NiftiDataBuffer, NVIMAGE_TYPE } from "../nifti/nifti-image-data"; //"../nifti/nifti-image-data";
 import { NVVoxelDataItem } from "Data/nvvoxel-data-item";
 import { mat4 } from "gl-matrix";
 
@@ -31,21 +31,11 @@ interface NVVoxelLoaderUrlOptions extends NVVoxelLoaderBaseOptions {
 }
 
 interface NVVoxelLoaderDataBufferOptions extends NVVoxelLoaderBaseOptions {
-  dataBuffer:
-    | Uint8Array
-    | Uint16Array
-    | Uint16Array
-    | BigUint64Array
-    | Float32Array;
+  dataBuffer: NiftiDataBuffer;
 }
 interface NVVoxelLoaderPairedDataOptions extends NVVoxelLoaderBaseOptions {
   pairedData: string;
-  dataBuffer:
-    | Uint8Array
-    | Uint16Array
-    | Uint16Array
-    | BigUint64Array
-    | Float32Array;
+  dataBuffer: NiftiDataBuffer;
 }
 
 type NVVoxelLoaderPartialOptions =
@@ -75,13 +65,7 @@ export class NVVoxelLoaderOptions {
   colorbarVisible = true;
   ignoreZeroVoxels = false;
   pairedData = "";
-  dataBuffer:
-    | Uint8Array
-    | Uint16Array
-    | Uint16Array
-    | BigUint64Array
-    | Float32Array
-    | undefined = undefined;
+  dataBuffer: NiftiDataBuffer | undefined = undefined;
   dataType = DATA_BUFFER_TYPE.DT_UNKNOWN;
   imageType = NVIMAGE_TYPE.UNKNOWN;
 
@@ -102,13 +86,7 @@ export class NVVoxelLoader {
     // copy the options
     const loaderOptions = { ...options };
     let hdr: nifti.NIFTI1 | nifti.NIFTI2 | undefined = undefined;
-    let imgRaw:
-      | Uint8Array
-      | Uint16Array
-      | Uint16Array
-      | BigUint64Array
-      | Float32Array
-      | undefined;
+    let imgRaw: NiftiDataBuffer | undefined;
 
     if (loaderOptions.url.length > 0) {
       const response = await fetch(loaderOptions.url);

@@ -86,7 +86,6 @@ export class NVVoxelDataNode {
   matRAS?: mat4;
   permRAS?: number[];
   pixDimsRAS?: number[];
-
   toRAS?: mat4;
   toRASvox?: mat4;
 
@@ -107,6 +106,7 @@ export class NVVoxelDataNode {
   private _robustMax: number;
   private _globalMin: number;
   private _globalMax: number;
+  
 
   constructor(data: NVVoxelDataItem) {
     // multiple objects could be defined from the same options. id is used to differentiate

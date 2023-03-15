@@ -1,9 +1,13 @@
+import { mat4 } from "gl-matrix";
+
 export class NV3dNode {
   _vertexBuffer: WebGLVertexArrayObject;
   _indexBuffer: WebGLVertexArrayObject;
   _mode: number;
   _indexCount: number;
   _textureCoordinateBuffer: WebGLVertexArrayObject;
+  _textures: WebGLTexture[] = [];
+  _matrix: mat4 = mat4.create();
 
   constructor(
     vertexBuffer: WebGLVertexArrayObject,
@@ -22,5 +26,9 @@ export class NV3dNode {
 
   public get vertexBuffer() {
     return this._vertexBuffer;
+  }
+
+  public get textures() {
+    return this._textures;
   }
 }
