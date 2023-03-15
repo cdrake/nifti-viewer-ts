@@ -4,17 +4,40 @@ import {
 } from "ResourceLoader/nvvoxel-loader";
 import { NVVoxelDataItem } from "Data/nvvoxel-data-item";
 import { NVVoxelDataNode } from "Data/nvoxel-data-node";
-
+import { DATA_BUFFER_TYPE, NiftiDataBuffer } from "../nifti/nifti-image-data";
 import { NV3dVoxelNode } from "Scene/nv3d-voxel-node";
 import { mat4, vec3, vec4 } from "gl-matrix";
 import { NVVoxelViewDataNode } from "Data/nvvoxel-view-data-node";
 import { NVColorTables } from "./nvcolor-tables";
+
+import { NVShaderCache } from "Renderer/nvshader-cache";
+import { NVShader } from "Renderer/nvshader";
+import orientFFrag from "./shaders/orient_f.frag";
+import orientIFrag from "./shaders/orient_i.frag";
+import orientRGBFrag from "./shaders/orient_rgb.frag";
+import orientUFrag from "./shaders/orient_u.frag";
+import orientFrag from "./shaders/orient.frag";
+import orientVert from "./shaers/orient.vert";
+
+type NVTextureFormat = {
+  internalFormat: number;
+  format: number;
+  type: number;
+}
 
 /**
  * Responsible for updating scene graph and data graph
  */
 export class NVController {
   _colorTables = new NVColorTables();
+  _shaderCache: NVShaderCache;
+  _gl: WebGL2RenderingContext;
+
+  constructor(gl: WebGL2RenderingContext) {
+    this._gl = gl;
+    this._shaderCache = new NVShaderCache(gl);
+  }
+
   /**
    * Loads a nifti image from url
    * @param {string} url
@@ -41,20 +64,112 @@ export class NVController {
     return pos3;
   }
 
+  /**
+   * Gets params for texStorage3D and texSubImage3D from data buffer type
+   * @param {DATA_BUFFER_TYPE} dataType 
+   * @returns {NVTextureFormat}
+   */
+  getTextureFormatFromDataType(dataType: DATA_BUFFER_TYPE): NVTextureFormat {
+    let textureFormat: NVTextureFormat;
+    switch (dataType) {
+      case DATA_BUFFER_TYPE.DT_UINT8:
+        textureFormat = { internalFormat: this._gl.R8UI, format: this._gl.RED_INTEGER, type: this._gl.UNSIGNED_BYTE };
+        break;
+      case DATA_BUFFER_TYPE.DT_INT16:
+        textureFormat = { internalFormat: this._gl.R16I, format: this._gl.RED_INTEGER, type: this._gl.SHORT };
+        break;
+      case DATA_BUFFER_TYPE.DT_FLOAT32:
+        textureFormat = { internalFormat: this._gl.R32F, format: this._gl.RED, type: this._gl.FLOAT };
+        break;
+      case DATA_BUFFER_TYPE.DT_FLOAT64:
+        textureFormat = { internalFormat: this._gl.R32F, format: this._gl.RED, type: this._gl.FLOAT };
+        break;
+      case DATA_BUFFER_TYPE.DT_RGB24:
+        textureFormat = { internalFormat: this._gl.RGB8UI, format: this._gl.RGB_INTEGER, type: this._gl.UNSIGNED_BYTE };
+        break;
+      case DATA_BUFFER_TYPE.DT_UINT16:
+        textureFormat = { internalFormat: this._gl.R16UI, format: this._gl.RED_INTEGER, type: this._gl.UNSIGNED_SHORT };
+        break;
+      case DATA_BUFFER_TYPE.DT_RGBA32:
+        textureFormat = { internalFormat: this._gl.RGBA8UI, format: this._gl.RGBA_INTEGER, type: this._gl.UNSIGNED_BYTE };
+        break;
+      default:
+        throw new Error("Data format not supported");
+    }
+
+    return textureFormat;
+  }
+
+  getOrientShaderFromDataType(dataType: DATA_BUFFER_TYPE): NVShader {
+    let orientShader: NVShader;
+    let shaderName: string;
+
+    switch (dataType) {
+      case DATA_BUFFER_TYPE.DT_UINT8:
+      case DATA_BUFFER_TYPE.DT_UINT16:
+        shaderName = "orientShaderU";
+        if (this._shaderCache.hasShader(shaderName)) {
+          orientShader = this._shaderCache.getShader(shaderName)
+        }
+        else {
+          orientShader = new NVShader(orientVert, `${orientUFrag}\n${orientFrag}`, this._gl);
+          this._shaderCache.addShader(shaderName, orientShader);
+        }
+        break;
+      case DATA_BUFFER_TYPE.DT_INT16:
+        shaderName = "orientShaderI";
+        if (this._shaderCache.hasShader(shaderName)) {
+          orientShader = this._shaderCache.getShader(shaderName)
+        }
+        else {
+          orientShader = new NVShader(orientVert, `${orientIFrag}\n${orientFrag}`, this._gl);
+          this._shaderCache.addShader(shaderName, orientShader);
+        }
+        break;
+      case DATA_BUFFER_TYPE.DT_FLOAT32:
+      case DATA_BUFFER_TYPE.DT_FLOAT64:
+        shaderName = "orientShaderF";
+        if (this._shaderCache.hasShader(shaderName)) {
+          orientShader = this._shaderCache.getShader(shaderName)
+        }
+        else {
+          orientShader = new NVShader(orientVert, `${orientIFrag}\n${orientFrag}`, this._gl);
+          this._shaderCache.addShader(shaderName, orientShader);
+        }
+        break;
+      case DATA_BUFFER_TYPE.DT_RGB24:
+      case DATA_BUFFER_TYPE.DT_RGBA32:
+        shaderName = "orientShaderRGBU";
+        if (this._shaderCache.hasShader(shaderName)) {
+          orientShader = this._shaderCache.getShader(shaderName)
+        }
+        else {
+          orientShader = new NVShader(orientVert, `${orientRGBFrag}\n${orientFrag}`, this._gl);
+          this._shaderCache.addShader(shaderName, orientShader);
+        }
+        break;
+      default:
+        throw new Error("Data type not supported");
+    }
+
+    return orientShader;
+  }
+
   public generateTextureFromVoxelViewDataNode(gl: WebGL2RenderingContext,
-    dataNode: NVVoxelViewDataNode): WebGLTexture | null {
-    const dims = dataNode.dimsRAS;
+    overlayItem: NVVoxelViewDataNode): WebGLTexture | null {
+
+    const dims = overlayItem.dimsRAS;
     if (!dims) {
       throw new Error("Dimensions undefined for volume")
     }
 
     // Create color texture to combine with voxel intesity values
-    let colorMap = this._colorTables.getColormap(dataNode.colorMap);
-    if(!colorMap) {
+    let colorMap = this._colorTables.getColormap(overlayItem.colorMap);
+    if (!colorMap) {
       throw new Error("Color map not found");
     }
     let colorMapTexture = gl.createTexture();
-    if(!colorMapTexture) {
+    if (!colorMapTexture) {
       throw new Error("Could not create texture");
     }
     gl.bindTexture(gl.TEXTURE_2D, colorMapTexture);
@@ -81,6 +196,105 @@ export class NVController {
     );
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(colorMap.buffer));
+
+
+    let fb = this._gl.createFramebuffer();
+    this._gl.bindFramebuffer(this._gl.FRAMEBUFFER, fb);
+    this._gl.disable(this._gl.CULL_FACE);
+    this._gl.viewport(0, 0, overlayItem.baseVolumeDims[1], overlayItem.baseVolumeDims[2]); //output in background dimensions
+    this._gl.disable(this._gl.BLEND)
+    let tempTex3D = this._gl.createTexture();
+    this._gl.activeTexture(this._gl.TEXTURE6); //Temporary 3D Texture
+    this._gl.bindTexture(this._gl.TEXTURE_3D, tempTex3D);
+    this._gl.texParameteri(
+      this._gl.TEXTURE_3D,
+      this._gl.TEXTURE_MIN_FILTER,
+      this._gl.NEAREST
+    );
+    this._gl.texParameteri(
+      this._gl.TEXTURE_3D,
+      this._gl.TEXTURE_MAG_FILTER,
+      this._gl.NEAREST
+    );
+    this._gl.texParameteri(
+      this._gl.TEXTURE_3D,
+      this._gl.TEXTURE_WRAP_R,
+      this._gl.CLAMP_TO_EDGE
+    );
+    this._gl.texParameteri(
+      this._gl.TEXTURE_3D,
+      this._gl.TEXTURE_WRAP_S,
+      this._gl.CLAMP_TO_EDGE
+    );
+    this._gl.texParameteri(
+      this._gl.TEXTURE_3D,
+      this._gl.TEXTURE_WRAP_T,
+      this._gl.CLAMP_TO_EDGE
+    );
+    this._gl.pixelStorei(this._gl.UNPACK_ALIGNMENT, 1);
+
+    const hdr = overlayItem.hdr;
+    const orientShader: NVShader = this.getOrientShaderFromDataType(hdr.datatype);
+    const textureFormat: NVTextureFormat = this.getTextureFormatFromDataType(hdr.dataType);
+    let img: NiftiDataBuffer = overlayItem.dataBuffer;
+    if (hdr.dataType === DATA_BUFFER_TYPE.DT_FLOAT64) {
+      img = Float32Array.from(img);
+    }
+
+    orientShader.use();
+    if (hdr.dataType === DATA_BUFFER_TYPE.DT_RGBA32) {
+      orientShader.updateUniformValue("hasAlpha", true);
+    }
+    orientShader.updateUniformValue("isAlphaThreshold", overlayItem.alphaThresholdUsed);
+    orientShader.updateUniformValue("cal_min", overlayItem.calMin);
+    orientShader.updateUniformValue("cal_max", overlayItem.calMin);
+
+    //if unused colorMapNegative https://github.com/niivue/niivue/issues/490
+    let mnNeg = Number.POSITIVE_INFINITY;
+    let mxNeg = Number.NEGATIVE_INFINITY;
+    if (overlayItem.colorMapNegative.length > 0) {
+      //assume symmetrical
+      mnNeg = Math.min(-overlayItem.calMin, -overlayItem.calMax);
+      mxNeg = Math.max(-overlayItem.calMin, -overlayItem.calMax);
+      if (isFinite(overlayItem.calMinNeg) && isFinite(overlayItem.calMaxNeg)) {
+        //explicit range for negative colormap: allows asymmetric maps
+        mnNeg = Math.min(overlayItem.calMinNeg, overlayItem.calMaxNeg);
+        mxNeg = Math.max(overlayItem.calMinNeg, overlayItem.calMaxNeg);
+      }
+    }
+    orientShader.updateUniformValue("cal_minNeg", mnNeg);
+    orientShader.updateUniformValue("cal_maxNeg", mxNeg);
+    this._gl.bindTexture(this._gl.TEXTURE_3D, tempTex3D);
+    orientShader.updateUniformValue("intensityVol", 6);
+    orientShader.updateUniformValue("blend3D", 5);
+    orientShader.updateUniformValue("colormap", 1);
+    orientShader.updateUniformValue("layer", 0);
+    orientShader.updateUniformValue("scl_inter", hdr.scl_inter);
+    orientShader.updateUniformValue("scl_slope", hdr.scl_slope);
+    orientShader.updateUniformValue("opacity", overlayItem.opacity);
+    orientShader.updateUniformValue("modulationVol", 7);
+
+    this._gl.texStorage3D(
+      this._gl.TEXTURE_3D,
+      1,
+      textureFormat.internalFormat,
+      hdr.dims[1],
+      hdr.dims[2],
+      hdr.dims[3]
+    );
+    this._gl.texSubImage3D(
+      this._gl.TEXTURE_3D,
+      0,
+      0,
+      0,
+      0,
+      hdr.dims[1],
+      hdr.dims[2],
+      hdr.dims[3],
+      textureFormat.format,
+      textureFormat.type,
+      img
+    );
 
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_3D, texture);

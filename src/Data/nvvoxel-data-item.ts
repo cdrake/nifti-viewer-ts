@@ -1,4 +1,4 @@
-import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifti-image-data";
+import { DATA_BUFFER_TYPE, NiftiDataBuffer, NVIMAGE_TYPE } from "../nifti/nifti-image-data";
 import * as nifti from "nifti-reader-js";
 
 export type NVVoxelDataItem = {
@@ -20,11 +20,6 @@ export type NVVoxelDataItem = {
   ignoreZeroVoxels: boolean;
   hdr: nifti.NIFTI1 | nifti.NIFTI2;
   dataType: DATA_BUFFER_TYPE;
-  dataBuffer:
-    | Uint8Array
-    | Uint16Array
-    | Uint16Array
-    | BigUint64Array
-    | Float32Array;
+  dataBuffer: NiftiDataBuffer;
   imageType: NVIMAGE_TYPE;
 };

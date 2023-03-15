@@ -1,4 +1,4 @@
-import { DATA_BUFFER_TYPE, NVIMAGE_TYPE } from "../nifti/nifti-image-data";
+import { DATA_BUFFER_TYPE, NiftiDataBuffer, NVIMAGE_TYPE } from "../nifti/nifti-image-data";
 import { NVVoxelDataItem } from "./nvvoxel-data-item";
 import { v4 as uuidv4 } from "uuid";
 import * as nifti from "nifti-reader-js";
@@ -69,14 +69,7 @@ export class NVVoxelDataNode {
   _colorbarVisible: boolean;
   _ignoreZeroVoxels: boolean;
   _dataType: DATA_BUFFER_TYPE;
-  _dataBuffer:
-    | Uint8Array
-    | Uint16Array
-    | Uint16Array
-    | Int16Array
-    | BigUint64Array
-    | Float32Array
-    | Float64Array;
+  _dataBuffer: NiftiDataBuffer;
   _imageType: NVIMAGE_TYPE;
   _frame4D: number;
   _frame4DCount: number;
@@ -300,6 +293,10 @@ export class NVVoxelDataNode {
 
   get dataType() {
     return this._dataType;
+  }
+
+  get dataBuffer() {
+    return this._dataBuffer;
   }
 
   get imageType() {
@@ -556,15 +553,15 @@ export class NVVoxelDataNode {
         this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_DOUBLE;
         break;
       }
-      case DATA_BUFFER_TYPE.DT_INT64: {
-        // eslint-disable-next-line no-undef
-        const i64 = new BigInt64Array(this._dataBuffer);
-        const vx = i64.length;
-        this._dataBuffer = new Float64Array(vx);
-        for (let i = 0; i < vx - 1; i++) this._dataBuffer[i] = Number(i64[i]);
-        this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_DOUBLE;
-        break;
-      }
+      // case DATA_BUFFER_TYPE.DT_INT64: {
+      //   // eslint-disable-next-line no-undef
+      //   const i64 = new BigInt64Array(this._dataBuffer);
+      //   const vx = i64.length;
+      //   this._dataBuffer = new Float64Array(vx);
+      //   for (let i = 0; i < vx - 1; i++) this._dataBuffer[i] = Number(i64[i]);
+      //   this.hdr.datatypeCode = DATA_BUFFER_TYPE.DT_DOUBLE;
+      //   break;
+      // }
       default:
         throw "datatype " + this.hdr.datatypeCode + " not supported";
     }

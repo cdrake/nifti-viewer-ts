@@ -11,9 +11,13 @@ export class NVShaderCache {
         this._gl = gl;
     }
 
-    addShader(name: string, vertSource: string, fragSource: string) {
+    addShaderFromSource(name: string, vertSource: string, fragSource: string) {
         const program = new NVShader(vertSource, fragSource, this._gl);
         this._shaderMap.set(name, program);
+    }
+
+    addShader(name: string, shader: NVShader) {
+        this._shaderMap.set(name, shader);
     }
 
     getShader(name: string): NVShader {
@@ -21,6 +25,10 @@ export class NVShaderCache {
             throw new Error(`Shader ${name} not found`);
         }
         return this._shaderMap.get(name)!;
+    }
+
+    hasShader(name: string): boolean {
+        return this._shaderMap.has(name);
     }
 
     deleteShader(name: string) {

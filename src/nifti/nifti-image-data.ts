@@ -54,8 +54,10 @@ export enum DATA_BUFFER_TYPE {
 }
 
 export type NiftiDataBuffer =
-  | Uint8Array
-  | Uint16Array
-  | Uint16Array
-  | BigUint64Array
-  | Float32Array
+| Uint8Array
+| Uint16Array
+| Uint16Array
+| Int16Array
+// | BigUint64Array
+| Float32Array
+| Float64Array;

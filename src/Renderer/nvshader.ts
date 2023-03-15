@@ -91,7 +91,7 @@ export class NVShader {
     }
 
     // upload the values of a uniform with the given name using type resolve to get correct function call
-    updateUniformValue(uniformName: string, value: any, log: boolean)
+    updateUniformValue(uniformName: string, value: any, log: boolean = false)
     {
         const GL = this._gl;
         const uniform = this._uniforms.get(uniformName);
