@@ -100,6 +100,11 @@ export class NVController {
     return textureFormat;
   }
 
+  /**
+   * Gets orient shader from data buffer type
+   * @param {DATA_BUFFER_TYPE} dataType 
+   * @returns {NVShader}
+   */
   getOrientShaderFromDataType(dataType: DATA_BUFFER_TYPE): NVShader {
     let orientShader: NVShader;
     let shaderName: string;
@@ -273,6 +278,34 @@ export class NVController {
     orientShader.updateUniformValue("scl_slope", hdr.scl_slope);
     orientShader.updateUniformValue("opacity", overlayItem.opacity);
     orientShader.updateUniformValue("modulationVol", 7);
+    orientShader.updateUniformValue("modulation", 0);
+    const mtx = mat4.clone(overlayItem.toRAS!);
+    orientShader.updateUniformValue("mtx", mtx);
+    // TODO(cdrake): write texture to frame buffer
+    /*
+    for (let i = 0; i < this.back.dims[3]; i++) {
+    //output slices
+    let coordZ = (1 / this.back.dims[3]) * (i + 0.5);
+    this.gl.uniform1f(orientShader.uniforms["coordZ"], coordZ);
+    this.gl.framebufferTextureLayer(
+      this.gl.FRAMEBUFFER,
+      this.gl.COLOR_ATTACHMENT0,
+      outTexture,
+      0,
+      i
+    );
+    //this.gl.clear(this.gl.DEPTH_BUFFER_BIT); //exhaustive, so not required
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+  }
+  this.gl.bindVertexArray(this.unusedVAO);
+  this.gl.deleteTexture(tempTex3D);
+  this.gl.deleteTexture(modulateTexture);
+  this.gl.deleteTexture(blendTexture);
+  this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
+  this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+
+  this.gl.deleteFramebuffer(fb);
+  */
 
     this._gl.texStorage3D(
       this._gl.TEXTURE_3D,
