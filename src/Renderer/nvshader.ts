@@ -137,4 +137,8 @@ export class NVShader {
             console.warn("Unkown uniform: " + uniformName);
         }
     }
+
+    destroy() {
+        this._gl.deleteProgram(this._program);
+    }
 }

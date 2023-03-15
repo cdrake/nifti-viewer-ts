@@ -26,7 +26,7 @@ export class NVShaderCache {
     deleteShader(name: string) {
         if (this._shaderMap.has(name)) {
             const shader = this._shaderMap.get(name)!;
-            this._gl.deleteProgram(shader._program);
+            shader.destroy();
             this._shaderMap.delete(name);
         }
     }
